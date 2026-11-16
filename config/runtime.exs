@@ -48,12 +48,39 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  # Hosted Postgres (Gigalixir, Neon, ...) usually requires SSL.
-  # Set DATABASE_SSL=false only for a database on the same private network.
+  # Hosted URLs (e.g. Neon) end in "?sslmode=require&channel_binding=require".
+  # Ecto doesn't use those parameters; SSL is configured below instead.
+  db_uri = URI.parse(database_url)
+  database_url = URI.to_string(%{db_uri | query: nil})
+
+  # DATABASE_SSL:
+  #   "verify" (default) - encrypted, and the server certificate is checked.
+  #                        Right for Neon and other public hosted databases.
+  #   "require"          - encrypted, certificate not checked.
+  #   "false"            - no SSL (database on the same private network only).
   ssl_opts =
-    if System.get_env("DATABASE_SSL", "true") in ~w(true 1),
-      do: [ssl: [verify: :verify_none]],
-      else: []
+    case System.get_env("DATABASE_SSL", "verify") do
+      "verify" ->
+        [
+          ssl: [
+            verify: :verify_peer,
+            cacerts: :public_key.cacerts_get(),
+            server_name_indication: String.to_charlist(db_uri.host),
+            customize_hostname_check: [
+              match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+            ]
+          ]
+        ]
+
+      "require" ->
+        [ssl: [verify: :verify_none, server_name_indication: String.to_charlist(db_uri.host)]]
+
+      "false" ->
+        []
+
+      other ->
+        raise "DATABASE_SSL must be verify, require or false (got #{inspect(other)})"
+    end
 
   config :portfolio, Portfolio.Repo,
     url: database_url,

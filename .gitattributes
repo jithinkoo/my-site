@@ -1,0 +1,7 @@
+# Keep Linux line endings for files that run inside the Linux container,
+# even when the repo is edited on Windows.
+* text=auto
+Dockerfile text eol=lf
+rel/overlays/bin/server text eol=lf
+rel/overlays/bin/migrate text eol=lf
+*.bat text eol=crlf

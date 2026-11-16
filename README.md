@@ -48,47 +48,60 @@ git push -u origin main
 
 ---
 
-## 3. Deploy free on Gigalixir
+## 3. Deploy free: Neon (database) + Render (app), no card
 
-Gigalixir is a hosting service made for Elixir. Its free tier gives one
-small app and a small free Postgres database. Check
-https://www.gigalixir.com/pricing for current limits.
+Both are free without a credit card at the time of writing. Check
+https://neon.com/pricing and https://render.com/docs/free for current limits.
 
-```bash
-pip3 install gigalixir          # the Gigalixir command-line tool
-gigalixir signup                # or: gigalixir login
-gigalixir create -n <your-app-name>
-gigalixir pg:create --free      # free Postgres; sets DATABASE_URL for you
-```
+### 3a. Database on Neon
 
-Set your admin password (12+ characters, used only by you):
+1. Sign up at https://neon.com (you can use "Sign in with GitHub").
+2. Create a project (any name, pick the region closest to you, e.g. Singapore).
+3. On the project dashboard, click **Connect** and copy the connection string.
+   It looks like
+   `postgresql://user:password@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`
+   Keep it private: it contains the database password.
 
-```bash
-gigalixir config:set ADMIN_PASSWORD='choose-a-long-unique-password'
-```
+### 3b. A secret key for the app
 
-Set the public host name (change later if you add a custom domain):
+Run this once on your laptop and copy the output (keep it private):
 
 ```bash
-gigalixir config:set PHX_HOST=<your-app-name>.gigalixirapp.com
+python -c "import secrets; print(secrets.token_urlsafe(64))"
 ```
 
-Deploy (this builds the app and runs database migrations on start):
+### 3c. App on Render
 
-```bash
-git push gigalixir main
-```
+1. Sign up at https://render.com with your GitHub account.
+2. **New → Web Service → Build and deploy from a Git repository**, pick `my-site`.
+3. Render detects the `Dockerfile`. Choose:
+   - **Language/Runtime:** Docker
+   - **Instance type:** Free
+4. Under **Environment Variables** add:
 
-Open `https://<your-app-name>.gigalixirapp.com`, then go to `/admin`.
+| Key | Value |
+|---|---|
+| `DATABASE_URL` | the Neon connection string from 3a |
+| `SECRET_KEY_BASE` | the output of the python command in 3b |
+| `ADMIN_PASSWORD` | a long password (12+ characters) for `/admin` |
+| `PHX_HOST` | `<your-service-name>.onrender.com` |
+
+5. Click **Create Web Service**. The first build takes several minutes.
+   Database tables are created automatically when the app starts.
+
+Open `https://<your-service-name>.onrender.com`, then go to `/admin`.
+
+Every `git push` to `main` redeploys the site automatically.
 
 Notes:
-- `SECRET_KEY_BASE` and `DATABASE_URL` are set by Gigalixir automatically.
-- The free database allows very few connections, so the app uses a pool of 2
+- Free Render services sleep after ~15 minutes without visitors. The first
+  visit after that takes up to about a minute; then it's fast again.
+- Neon's free database also sleeps when idle and wakes on the next query.
+- The free database allows few connections, so the app uses a pool of 2
   (`POOL_SIZE`).
-- If the build complains about the Erlang/Elixir versions, edit
-  `elixir_buildpack.config` to versions Gigalixir's build supports.
+- `DATABASE_SSL` defaults to `verify` (encrypted, certificate checked).
 - The app listens on IPv4. If a host needs IPv6, set `BIND_IPV6=true`.
-- Logs: `gigalixir logs`
+- Logs: Render dashboard → your service → **Logs**.
 
 ---
 
@@ -99,17 +112,14 @@ request it with a small pull request on GitHub.
 
 1. Fork https://github.com/is-a-dev/register
 2. Add a file `domains/<yourname>.json`. Follow the format in their README,
-   pointing a `CNAME` record at `<your-app-name>.gigalixirapp.com`.
+   pointing a `CNAME` record at `<your-service-name>.onrender.com`.
 3. Open a pull request and wait for approval (usually a few days; read
    their rules first, since they check that the site is a real personal site).
-4. Tell Gigalixir about the domain and update the host:
+4. In Render: your service → **Settings → Custom Domains → Add**
+   `<yourname>.is-a.dev`. Then change the `PHX_HOST` environment variable
+   to `<yourname>.is-a.dev`.
 
-```bash
-gigalixir domains:add <yourname>.is-a.dev
-gigalixir config:set PHX_HOST=<yourname>.is-a.dev
-```
-
-HTTPS certificates are issued automatically.
+Render issues the HTTPS certificate automatically.
 
 ---
 
