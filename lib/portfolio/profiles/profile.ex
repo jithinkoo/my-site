@@ -26,13 +26,25 @@ defmodule Portfolio.Profiles.Profile do
     field :email, :string
     field :linkedin_url, :string
     field :github_url, :string
+    field :photo_image_id, :id
 
     timestamps(type: :utc_datetime)
   end
 
   def changeset(profile, attrs) do
     profile
-    |> cast(attrs, [:name, :headline, :intro, :about, :location, :email, :linkedin_url, :github_url])
+    |> cast(attrs, [
+      :name,
+      :headline,
+      :intro,
+      :about,
+      :location,
+      :email,
+      :linkedin_url,
+      :github_url,
+      :photo_image_id
+    ])
+    |> foreign_key_constraint(:photo_image_id)
     |> validate_required([:name, :headline])
     |> validate_length(:name, max: 120)
     |> validate_length(:headline, max: 200)

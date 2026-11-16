@@ -33,6 +33,7 @@ defmodule PortfolioWeb.Router do
 
   scope "/", PortfolioWeb do
     get "/feed.xml", FeedController, :index
+    get "/media/:id", MediaController, :show
   end
 
   scope "/admin", PortfolioWeb.Admin, as: :admin do
@@ -48,6 +49,7 @@ defmodule PortfolioWeb.Router do
 
     get "/", PostController, :index
     resources "/posts", PostController, except: [:index, :show]
+    resources "/images", ImageController, only: [:index, :create, :delete]
     get "/profile", ProfileController, :edit
     put "/profile", ProfileController, :update
   end

@@ -32,6 +32,15 @@ defmodule Portfolio.MarkdownTest do
     refute to_html("[x](javascript:alert(1))") =~ "<a"
   end
 
+  test "images: site or https sources only" do
+    assert to_html("![Beach at dawn](/media/3)") ==
+             ~s(<p><img src="/media/3" alt="Beach at dawn" loading="lazy"></p>)
+
+    assert to_html("![x](https://e.com/a.png)") =~ ~s(<img src="https://e.com/a.png")
+    refute to_html("![x](javascript:alert(1))") =~ "<img"
+    refute to_html(~s{![x" onerror="alert(1)](/media/1)}) =~ ~s(" onerror)
+  end
+
   test "raw HTML is shown as text, never executed" do
     html = to_html("<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>")
     refute html =~ "<script"

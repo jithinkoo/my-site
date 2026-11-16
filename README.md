@@ -137,8 +137,20 @@ Admin → **Write a new post**. Posts use Markdown:
 | `- item` | a bulleted list |
 | `[text](https://...)` | a link |
 | `---` | a decorative break |
+| `![description](/media/12)` | an image (copy the line from Admin → Images) |
 
 Untick **Published** to keep a post as a private draft.
+
+## Photos and images
+
+- **Your photo:** Admin → **Profile** → Photo. It shows round on the home
+  and About pages, and in link previews (WhatsApp, LinkedIn).
+- **Images for posts:** Admin → **Images** → upload, then copy the line
+  shown under the image into your post, on its own line.
+- JPEG, PNG, WebP or GIF, up to 5 MB. Large photos are shrunk in your
+  browser before upload (to about 1600 px), so phone photos are fine.
+- Images are stored in the Postgres database, not on disk, because free
+  hosts like Render delete files on disk whenever the app restarts.
 
 ---
 

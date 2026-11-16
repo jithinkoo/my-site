@@ -2,7 +2,36 @@
   <h1>Your profile</h1>
   <p class="muted">This is how you appear across the site.</p>
 
-  <.form for={@form} action={~p"/admin/profile"} method="put" class="editor">
+  <.form for={@form} action={~p"/admin/profile"} method="put" multipart class="editor">
+    <div class="field photo-field">
+      <span class="label">Photo</span>
+      <div class="photo-row">
+        <img
+          :if={@profile.photo_image_id}
+          src={Portfolio.Media.path(@profile.photo_image_id)}
+          alt="Your current photo"
+          class="avatar avatar-sm"
+        />
+        <div :if={!@profile.photo_image_id} class="avatar avatar-sm avatar-empty" aria-hidden="true"></div>
+        <div>
+          <label for="profile_photo" class="sr-only">Upload a new photo</label>
+          <input
+            type="file"
+            id="profile_photo"
+            name="profile[photo]"
+            accept="image/jpeg,image/png,image/webp"
+            data-resize
+          />
+          <p class="hint" data-resize-note>
+            A square-ish photo of your face works best. Shown round on the home and About pages.
+          </p>
+          <label :if={@profile.photo_image_id} class="check-inline">
+            <input type="checkbox" name="profile[remove_photo]" value="true" /> Remove current photo
+          </label>
+        </div>
+      </div>
+    </div>
+
     <.input field={@form[:name]} label="Name" required />
     <.input
       field={@form[:headline]}
@@ -22,7 +51,7 @@
       type="textarea"
       rows="14"
       label="About page"
-      hint="Your story, in your own words. Markdown works."
+      hint="Your story, in your own words. Markdown works, including images from the Images page."
     />
     <.input field={@form[:location]} label="Location" />
     <.input field={@form[:email]} type="email" label="Public email (optional)" />

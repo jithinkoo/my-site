@@ -12,6 +12,7 @@ defmodule Portfolio.Markdown do
     # / ## / ###       headings (rendered as h2/h3/h4; the page title is h1)
     **bold**, *italic*, `code`
     [text](https://...)
+    ![description](/media/12)   image (from Admin → Images)
     > quote            (quote lines can contain paragraphs and formatting)
     - item / * item    bulleted list
     1. item            numbered list
@@ -111,7 +112,18 @@ defmodule Portfolio.Markdown do
     body <> plain_inline(tail)
   end
 
-  defp plain_inline(text), do: text |> esc() |> links() |> emphasis()
+  defp plain_inline(text), do: text |> esc() |> images() |> links() |> emphasis()
+
+  # ![description](/media/12) or ![description](https://...). Runs on
+  # escaped text and before links(), which would otherwise take the
+  # "[...](...)" part.
+  defp images(escaped) do
+    Regex.replace(
+      ~r{!\[([^\]]*)\]\(((?:https://|/)[^\s()]*)\)},
+      escaped,
+      fn _, alt, url -> ~s(<img src="#{url}" alt="#{alt}" loading="lazy">) end
+    )
+  end
 
   # Runs on already-escaped text, so `"` is &quot; and cannot break out of href.
   defp links(escaped) do

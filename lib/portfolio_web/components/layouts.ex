@@ -63,6 +63,7 @@ defmodule PortfolioWeb.Layouts do
         <a href={~p"/admin"} class="brand">Admin</a>
         <nav aria-label="Admin">
           <a href={~p"/admin"}>Posts</a>
+          <a href={~p"/admin/images"}>Images</a>
           <a href={~p"/admin/profile"}>Profile</a>
           <a href={~p"/"} target="_blank">View site ↗</a>
           <.form for={%{}} action={~p"/admin/logout"} method="delete" class="inline-form">
@@ -76,6 +77,8 @@ defmodule PortfolioWeb.Layouts do
       <.flash_group flash={@flash} />
       {render_slot(@inner_block)}
     </main>
+    <script defer src={~p"/assets/js/admin.js"}>
+    </script>
     """
   end
 

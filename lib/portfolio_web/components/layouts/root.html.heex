@@ -9,6 +9,11 @@
     <meta property="og:title" content={page_title(assigns)} />
     <meta property="og:description" content={assigns[:meta_description] || @profile.headline} />
     <meta property="og:type" content={if assigns[:post], do: "article", else: "website"} />
+    <meta
+      :if={@profile.photo_image_id}
+      property="og:image"
+      content={url(~p"/media/#{@profile.photo_image_id}")}
+    />
     <meta :if={assigns[:noindex]} name="robots" content="noindex, nofollow" />
     <meta name="color-scheme" content="light dark" />
     <link rel="alternate" type="application/rss+xml" title={"#{@profile.name}: Thoughts"} href={~p"/feed.xml"} />

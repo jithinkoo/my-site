@@ -753,6 +753,140 @@ nav a[aria-current="page"] {
   margin-top: 1rem;
 }
 
+/* ---------- Photos & images ---------- */
+
+.avatar {
+  display: block;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 0 1.6rem;
+  background: var(--rule);
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 5px var(--rule);
+}
+
+.avatar-sm {
+  width: 72px;
+  height: 72px;
+  margin: 0;
+  flex: none;
+}
+
+.avatar-empty {
+  border: 1px dashed var(--muted);
+  background: transparent;
+  box-shadow: none;
+}
+
+.prose img {
+  display: block;
+  margin: 1.8em auto;
+}
+
+.photo-field .label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin-bottom: 0.6rem;
+}
+
+.photo-row {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-start;
+}
+
+.photo-row input[type="file"],
+.upload-box input[type="file"] {
+  font: inherit;
+  font-size: 0.92rem;
+  max-width: 100%;
+}
+
+.check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.upload-box {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.4rem 0.6rem;
+  margin-bottom: 2rem;
+}
+
+.upload-box input[type="text"] {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.65rem 0.8rem;
+}
+
+.image-grid {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1.2rem;
+  font-family: var(--sans);
+}
+
+.image-card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.image-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--rule);
+}
+
+.image-meta {
+  padding: 0.8rem 0.9rem 0.9rem;
+}
+
+.image-name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-field {
+  width: 100%;
+  margin: 0.6rem 0 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+}
+
+.danger-link {
+  color: var(--danger);
+  font-size: 0.88rem;
+  padding: 0;
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 34rem) {
