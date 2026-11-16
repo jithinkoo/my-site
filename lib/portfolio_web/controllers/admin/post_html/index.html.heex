@@ -1,0 +1,33 @@
+<Layouts.admin flash={@flash}>
+  <div class="admin-head">
+    <h1>Posts</h1>
+    <a href={~p"/admin/posts/new"} class="button">Write a new post</a>
+  </div>
+
+  <p :if={@posts == []} class="muted">No posts yet. Write your first one.</p>
+
+  <table :if={@posts != []} class="admin-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Status</th>
+        <th>Date</th>
+        <th><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr :for={post <- @posts}>
+        <td><a href={~p"/admin/posts/#{post}/edit"}>{post.title}</a></td>
+        <td>
+          <span class={["badge", post.published && "badge-live"]}>
+            {if post.published, do: "Live", else: "Draft"}
+          </span>
+        </td>
+        <td class="nowrap">{short_date(post.published_at || post.inserted_at)}</td>
+        <td class="nowrap right">
+          <a :if={post.published} href={~p"/thoughts/#{post.slug}"} target="_blank">View ↗</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</Layouts.admin>

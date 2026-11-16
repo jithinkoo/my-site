@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <title>{page_title(assigns)}</title>
+    <meta name="description" content={assigns[:meta_description] || @profile.headline} />
+    <meta property="og:title" content={page_title(assigns)} />
+    <meta property="og:description" content={assigns[:meta_description] || @profile.headline} />
+    <meta property="og:type" content={if assigns[:post], do: "article", else: "website"} />
+    <meta :if={assigns[:noindex]} name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="alternate" type="application/rss+xml" title={"#{@profile.name}: Thoughts"} href={~p"/feed.xml"} />
+    <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script>
+      // Apply the saved theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    {@inner_content}
+    <script>
+      document.querySelectorAll("[data-theme-toggle]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var current = root.dataset.theme ||
+            (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          var next = current === "dark" ? "light" : "dark";
+          root.dataset.theme = next;
+          try { localStorage.setItem("theme", next); } catch (e) {}
+        });
+      });
+    </script>
+  </body>
+</html>

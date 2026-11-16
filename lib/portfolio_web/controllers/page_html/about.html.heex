@@ -1,0 +1,23 @@
+<Layouts.app flash={@flash} profile={@profile} active={:about}>
+  <article class="page">
+    <header class="page-header">
+      <p class="eyebrow">About</p>
+      <h1>{@profile.name}</h1>
+      <p class="lede">{@profile.headline}</p>
+    </header>
+
+    <div class="prose">{markdown(@profile.about)}</div>
+
+    <aside :if={@profile.email || @profile.linkedin_url || @profile.github_url} class="contact-card">
+      <h2>Say hello</h2>
+      <p>I enjoy hearing from people. The easiest ways to reach me:</p>
+      <ul class="contact-list">
+        <li :if={@profile.email}><a href={"mailto:#{@profile.email}"}>{@profile.email}</a></li>
+        <li :if={@profile.linkedin_url}>
+          <a href={@profile.linkedin_url} rel="me noopener">LinkedIn</a>
+        </li>
+        <li :if={@profile.github_url}><a href={@profile.github_url} rel="me noopener">GitHub</a></li>
+      </ul>
+    </aside>
+  </article>
+</Layouts.app>

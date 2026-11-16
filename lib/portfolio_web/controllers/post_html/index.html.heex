@@ -1,0 +1,12 @@
+<Layouts.app flash={@flash} profile={@profile} active={:thoughts}>
+  <header class="page-header">
+    <p class="eyebrow">Writing</p>
+    <h1>Thoughts</h1>
+    <p class="lede">Notes on work, learning and life, written slowly.</p>
+  </header>
+
+  <p :if={@posts == []} class="muted">Nothing here yet. The first one is on its way.</p>
+  <ul class="post-list">
+    <li :for={post <- @posts}><.post_item post={post} /></li>
+  </ul>
+</Layouts.app>

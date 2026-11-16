@@ -1,0 +1,19 @@
+<Layouts.app flash={@flash} profile={@profile} active={:thoughts}>
+  <article class="page">
+    <header class="page-header">
+      <p class="meta">
+        <time datetime={DateTime.to_iso8601(@post.published_at)}>{long_date(@post.published_at)}</time>
+        · {Portfolio.Blog.reading_minutes(@post)} min read
+      </p>
+      <h1>{@post.title}</h1>
+      <p :if={@post.summary} class="lede">{@post.summary}</p>
+    </header>
+
+    <div class="prose">{markdown(@post.body)}</div>
+
+    <footer class="post-footer">
+      <p>Written by <a href={~p"/about"}>{@profile.name}</a>.</p>
+      <p><a href={~p"/thoughts"}>← All thoughts</a></p>
+    </footer>
+  </article>
+</Layouts.app>

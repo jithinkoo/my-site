@@ -1,0 +1,22 @@
+<Layouts.app flash={@flash} profile={@profile}>
+  <section class="hero">
+    <p class="eyebrow">{@profile.location}</p>
+    <h1>{@profile.name}</h1>
+    <p class="lede">{@profile.headline}</p>
+    <div :if={@profile.intro} class="intro prose">{markdown(@profile.intro)}</div>
+    <p class="hero-links">
+      <a href={~p"/about"} class="button">Read my story</a>
+      <a href={~p"/thoughts"} class="button button-quiet">All thoughts →</a>
+    </p>
+  </section>
+
+  <section class="section" aria-labelledby="latest">
+    <h2 id="latest" class="section-title">Latest thoughts</h2>
+    <p :if={@posts == []} class="muted">Nothing here yet. The first one is on its way.</p>
+    <ul class="post-list">
+      <li :for={post <- @posts}>
+        <PortfolioWeb.PostHTML.post_item post={post} />
+      </li>
+    </ul>
+  </section>
+</Layouts.app>
