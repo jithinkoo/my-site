@@ -32,6 +32,13 @@
       </div>
     </div>
 
+    <.input
+      field={@form[:photo_caption]}
+      label="Text on photo (optional)"
+      hint="A short line shown over your photo, e.g. a favourite quote. Up to 200 characters."
+      maxlength="200"
+    />
+
     <.input field={@form[:name]} label="Name" required />
     <.input
       field={@form[:headline]}

@@ -887,6 +887,265 @@ nav a[aria-current="page"] {
   padding: 0;
 }
 
+/* ---------- Full-screen layout with photo panel ---------- */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The photo sits behind the page on the left and dissolves into the
+   background towards the right, so the screen never looks split in two.
+   The content column starts at 40vw and overlaps the faded tail. */
+.photo-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 62vw;
+  z-index: 0;
+  margin: 0;
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+}
+
+.shell.has-photo .content-col {
+  position: relative;
+  z-index: 1;
+  margin-left: 40vw;
+}
+
+/* Header and footer rules fade in from the left instead of starting
+   with a hard edge. */
+.has-photo .site-header,
+.has-photo .site-footer {
+  border-color: transparent;
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-image: linear-gradient(to right, transparent, var(--rule) 35%);
+}
+
+.has-photo .site-header {
+  background-position: bottom;
+}
+
+.has-photo .site-footer {
+  background-position: top;
+}
+
+.photo-panel img {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 38%, rgb(0 0 0 / 55%) 58%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 38%, rgb(0 0 0 / 55%) 58%, transparent 100%);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  opacity: 0.3;
+  filter: grayscale(0.9) contrast(0.9) brightness(1.08);
+  transform: scale(1.06);
+  transition:
+    opacity 0.7s ease,
+    filter 0.7s ease,
+    transform 1.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Lit on mouse hover (real mice only: phones keep :hover stuck after a
+   tap), on keyboard focus, or when tapped (.is-lit, toggled in site.js). */
+.photo-panel:focus-visible img,
+.photo-panel.is-lit img {
+  opacity: 1;
+  filter: none;
+  transform: scale(1);
+}
+
+@media (hover: hover) {
+  .photo-panel:hover img {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+  }
+
+  .photo-panel:hover .photo-caption {
+    color: #fff;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 55%), 0 4px 24px rgb(0 0 0 / 45%);
+  }
+}
+
+.photo-caption {
+  position: absolute;
+  left: clamp(1.25rem, 4vw, 3rem);
+  /* keep the caption on the visible part, left of the content column */
+  right: calc(22vw + 2rem);
+  bottom: clamp(1.5rem, 6vh, 4rem);
+  z-index: 1;
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(1.2rem, 2.1vw, 1.9rem);
+  line-height: 1.35;
+  color: var(--text);
+  text-wrap: balance;
+  transition: color 0.7s ease, text-shadow 0.7s ease;
+}
+
+.photo-caption::before {
+  content: "";
+  display: block;
+  width: 2.5rem;
+  height: 2px;
+  margin-bottom: 1rem;
+  background: var(--accent);
+}
+
+.photo-panel:focus-visible .photo-caption,
+.photo-panel.is-lit .photo-caption {
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 55%), 0 4px 24px rgb(0 0 0 / 45%);
+}
+
+:root[data-theme="dark"] .photo-panel img {
+  opacity: 0.22;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .photo-panel img {
+    opacity: 0.22;
+  }
+}
+
+/* ---------- Physics playground ---------- */
+
+.playground {
+  margin-top: 3.5rem;
+}
+
+.playground-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.8rem;
+}
+
+.section-title-inline {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.playground-hint {
+  margin: 0;
+}
+
+.hint-touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .hint-mouse {
+    display: none;
+  }
+
+  .hint-touch {
+    display: inline;
+  }
+}
+
+.physics {
+  display: block;
+  width: 100%;
+  height: 300px;
+  touch-action: pan-y;
+  cursor: crosshair;
+  background:
+    radial-gradient(circle at 1px 1px, var(--rule) 1px, transparent 0) 0 0 / 22px 22px;
+  border-bottom: 2px solid var(--text);
+}
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  }
+
+  .reveal-2 { animation-delay: 0.08s; }
+  .reveal-3 { animation-delay: 0.16s; }
+  .reveal-4 { animation-delay: 0.24s; }
+  .reveal-5 { animation-delay: 0.32s; }
+
+  .photo-panel img {
+    animation: develop 1.8s ease-out backwards;
+  }
+
+  .post-link h3 {
+    transition: transform 0.25s ease, color 0.25s ease;
+  }
+
+  .post-link:hover h3 {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes develop {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+/* ---------- Tablets & phones: photo becomes a banner ---------- */
+
+@media (max-width: 60rem) {
+  .photo-panel {
+    position: relative;
+    width: 100%;
+    height: 46vh;
+    min-height: 260px;
+  }
+
+  /* On narrow screens the photo dissolves downwards into the page. */
+  .photo-panel img {
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
+  }
+
+  .shell.has-photo .content-col {
+    margin-left: 0;
+    margin-top: -3rem;
+  }
+
+  .photo-caption {
+    right: clamp(1.25rem, 4vw, 3rem);
+    bottom: 3.5rem;
+    font-size: 1.15rem;
+  }
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 34rem) {

@@ -27,6 +27,7 @@ defmodule Portfolio.Profiles.Profile do
     field :linkedin_url, :string
     field :github_url, :string
     field :photo_image_id, :id
+    field :photo_caption, :string
 
     timestamps(type: :utc_datetime)
   end
@@ -42,9 +43,11 @@ defmodule Portfolio.Profiles.Profile do
       :email,
       :linkedin_url,
       :github_url,
-      :photo_image_id
+      :photo_image_id,
+      :photo_caption
     ])
     |> foreign_key_constraint(:photo_image_id)
+    |> validate_length(:photo_caption, max: 200)
     |> validate_required([:name, :headline])
     |> validate_length(:name, max: 120)
     |> validate_length(:headline, max: 200)

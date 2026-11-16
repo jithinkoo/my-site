@@ -1,21 +1,24 @@
 <Layouts.app flash={@flash} profile={@profile}>
   <section class="hero">
-    <img
-      :if={@profile.photo_image_id}
-      src={Portfolio.Media.path(@profile.photo_image_id)}
-      alt={"Photo of #{@profile.name}"}
-      class="avatar"
-      width="120"
-      height="120"
-    />
-    <p class="eyebrow">{@profile.location}</p>
-    <h1>{@profile.name}</h1>
-    <p class="lede">{@profile.headline}</p>
-    <div :if={@profile.intro} class="intro prose">{markdown(@profile.intro)}</div>
-    <p class="hero-links">
+    <p class="eyebrow reveal">{@profile.location}</p>
+    <h1 class="reveal reveal-2">{@profile.name}</h1>
+    <p class="lede reveal reveal-3">{@profile.headline}</p>
+    <div :if={@profile.intro} class="intro prose reveal reveal-4">{markdown(@profile.intro)}</div>
+    <p class="hero-links reveal reveal-5">
       <a href={~p"/about"} class="button">Read my story</a>
       <a href={~p"/thoughts"} class="button button-quiet">All thoughts →</a>
     </p>
+  </section>
+
+  <section class="playground reveal reveal-5" aria-labelledby="playground-title">
+    <div class="playground-head">
+      <h2 id="playground-title" class="section-title-inline">Little things in motion</h2>
+      <p class="hint playground-hint">
+        <span class="hint-mouse">Move your mouse to push the balls. Click to drop a new one.</span>
+        <span class="hint-touch">Drag to push the balls. Tap to drop a new one.</span>
+      </p>
+    </div>
+    <canvas class="physics" data-physics aria-hidden="true"></canvas>
   </section>
 
   <section class="section" aria-labelledby="latest">

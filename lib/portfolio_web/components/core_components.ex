@@ -28,7 +28,7 @@ defmodule PortfolioWeb.CoreComponents do
   attr :label, :string, required: true
   attr :type, :string, default: "text"
   attr :hint, :string, default: nil
-  attr :rest, :global, include: ~w(rows placeholder autocomplete required autofocus)
+  attr :rest, :global, include: ~w(rows placeholder autocomplete required autofocus maxlength)
 
   def input(%{type: "checkbox"} = assigns) do
     assigns = assign(assigns, :checked, Phoenix.HTML.Form.normalize_value("checkbox", assigns.field.value))

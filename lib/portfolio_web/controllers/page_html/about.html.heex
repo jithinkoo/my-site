@@ -1,17 +1,9 @@
 <Layouts.app flash={@flash} profile={@profile} active={:about}>
   <article class="page">
     <header class="page-header">
-      <img
-        :if={@profile.photo_image_id}
-        src={Portfolio.Media.path(@profile.photo_image_id)}
-        alt={"Photo of #{@profile.name}"}
-        class="avatar"
-        width="120"
-        height="120"
-      />
-      <p class="eyebrow">About</p>
-      <h1>{@profile.name}</h1>
-      <p class="lede">{@profile.headline}</p>
+      <p class="eyebrow reveal">About</p>
+      <h1 class="reveal reveal-2">{@profile.name}</h1>
+      <p class="lede reveal reveal-3">{@profile.headline}</p>
     </header>
 
     <div class="prose">{markdown(@profile.about)}</div>

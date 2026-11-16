@@ -22,33 +22,62 @@ defmodule PortfolioWeb.Layouts do
   def app(assigns) do
     ~H"""
     <a class="skip" href="#main">Skip to content</a>
-    <header class="site-header">
-      <div class="wrap header-row">
-        <a href={~p"/"} class="brand">{@profile.name}</a>
-        <nav aria-label="Main">
-          <a href={~p"/thoughts"} aria-current={@active == :thoughts && "page"}>Thoughts</a>
-          <a href={~p"/about"} aria-current={@active == :about && "page"}>About</a>
-          <.theme_toggle />
-        </nav>
-      </div>
-    </header>
+    <div class={["shell", @profile.photo_image_id && "has-photo"]}>
+      <.photo_panel :if={@profile.photo_image_id} profile={@profile} />
 
-    <main id="main" class="wrap">
-      <.flash_group flash={@flash} />
-      {render_slot(@inner_block)}
-    </main>
+      <div class="content-col">
+        <header class="site-header">
+          <div class="wrap header-row">
+            <a href={~p"/"} class="brand">{@profile.name}</a>
+            <nav aria-label="Main">
+              <a href={~p"/thoughts"} aria-current={@active == :thoughts && "page"}>Thoughts</a>
+              <a href={~p"/about"} aria-current={@active == :about && "page"}>About</a>
+              <.theme_toggle />
+            </nav>
+          </div>
+        </header>
 
-    <footer class="site-footer">
-      <div class="wrap footer-row">
-        <p>© {Date.utc_today().year} {@profile.name}</p>
-        <p class="footer-links">
-          <a :if={@profile.email} href={"mailto:#{@profile.email}"}>Email</a>
-          <a :if={@profile.linkedin_url} href={@profile.linkedin_url} rel="me noopener">LinkedIn</a>
-          <a :if={@profile.github_url} href={@profile.github_url} rel="me noopener">GitHub</a>
-          <a href={~p"/feed.xml"}>RSS</a>
-        </p>
+        <main id="main" class="wrap">
+          <.flash_group flash={@flash} />
+          {render_slot(@inner_block)}
+        </main>
+
+        <footer class="site-footer">
+          <div class="wrap footer-row">
+            <p>© {Date.utc_today().year} {@profile.name}</p>
+            <p class="footer-links">
+              <a :if={@profile.email} href={"mailto:#{@profile.email}"}>Email</a>
+              <a :if={@profile.linkedin_url} href={@profile.linkedin_url} rel="me noopener">LinkedIn</a>
+              <a :if={@profile.github_url} href={@profile.github_url} rel="me noopener">GitHub</a>
+              <a href={~p"/feed.xml"}>RSS</a>
+            </p>
+          </div>
+        </footer>
       </div>
-    </footer>
+    </div>
+    <script defer src={~p"/assets/js/site.js"}>
+    </script>
+    """
+  end
+
+  @doc """
+  Full-height photo on the left (a banner on phones). Quiet and faded by
+  default; comes alive on hover, keyboard focus, or tap.
+  """
+  attr :profile, :map, required: true
+
+  def photo_panel(assigns) do
+    ~H"""
+    <figure class="photo-panel" tabindex="0" data-photo-panel>
+      <img
+        src={Portfolio.Media.path(@profile.photo_image_id)}
+        alt={"Photo of #{@profile.name}"}
+        fetchpriority="high"
+      />
+      <figcaption :if={@profile.photo_caption not in [nil, ""]} class="photo-caption">
+        {@profile.photo_caption}
+      </figcaption>
+    </figure>
     """
   end
 

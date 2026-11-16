@@ -88,6 +88,40 @@ defmodule PortfolioWeb.ImagesTest do
     assert Profiles.get_profile().photo_image_id == nil
   end
 
+  test "full-height photo panel with caption, on every public page", %{conn: conn} do
+    conn = log_in(conn)
+
+    put(conn, ~p"/admin/profile",
+      profile: %{
+        name: "Jithin",
+        photo_caption: "Curiosity <is> a vector",
+        photo: upload(@png, "me.png")
+      }
+    )
+
+    for path <- [~p"/", ~p"/about", ~p"/thoughts"] do
+      html = build_conn() |> get(path) |> html_response(200)
+      assert html =~ ~s(class="photo-panel")
+      assert html =~ "Curiosity &lt;is&gt; a vector"
+    end
+
+    home = build_conn() |> get(~p"/") |> html_response(200)
+    assert home =~ "data-physics"
+    assert home =~ "/assets/js/site.js"
+  end
+
+  test "no photo means no panel and a single-column page", %{conn: conn} do
+    html = conn |> get(~p"/") |> html_response(200)
+    refute html =~ ~s(class="photo-panel")
+    refute html =~ "has-photo"
+  end
+
+  test "caption longer than 200 characters is refused", %{conn: conn} do
+    conn = log_in(conn)
+    conn = put(conn, ~p"/admin/profile", profile: %{photo_caption: String.duplicate("a", 201)})
+    assert html_response(conn, 422) =~ "should be at most 200"
+  end
+
   test "a non-image profile photo is refused with a message", %{conn: conn} do
     conn = log_in(conn)
     conn = put(conn, ~p"/admin/profile", profile: %{name: "J", photo: upload("not an image", "me.png")})
