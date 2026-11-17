@@ -129,6 +129,17 @@ defmodule PortfolioWeb.ImagesTest do
     assert Layouts.caption_lines("One line") == [{"One line", false}]
     assert Layouts.caption_lines("Quote\n\n— Jithin") == [{"Quote", false}, {"— Jithin", true}]
     assert Layouts.caption_lines("Quote\n--  Jithin ") == [{"Quote", false}, {"— Jithin", true}]
+
+    # name typed at the end of the same line
+    assert Layouts.caption_lines("Everything taught me patience. -Jithin") ==
+             [{"Everything taught me patience.", false}, {"— Jithin", true}]
+
+    assert Layouts.caption_lines("Slow rivers, quiet sea — Jithin K") ==
+             [{"Slow rivers, quiet sea", false}, {"— Jithin K", true}]
+
+    # ordinary hyphens are left alone
+    assert Layouts.caption_lines("A well-known path - and more") ==
+             [{"A well-known path - and more", false}]
   end
 
   describe "background photo loop" do

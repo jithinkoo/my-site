@@ -103,12 +103,31 @@ defmodule PortfolioWeb.Layouts do
     |> String.split(~r/\R/u, trim: true)
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
+    |> split_trailing_signature()
     |> Enum.map(fn line ->
       case Regex.run(~r/^[-–—]+\s*(.+)$/u, line) do
         [_, name] -> {"— " <> name, true}
         nil -> {line, false}
       end
     end)
+  end
+
+  # "Quote here. -Jithin" typed on one line: move the name to its own line.
+  # Only a short capitalised name after " -", " –" or " —" at the very end
+  # counts, so ordinary hyphens inside the text are left alone.
+  defp split_trailing_signature(lines) do
+    already_signed? = Enum.any?(lines, &Regex.match?(~r/^[-–—]/u, &1))
+
+    case {already_signed?, List.last(lines)} do
+      {false, last} when is_binary(last) ->
+        case Regex.run(~r/^(.*\S)\s+[-–—]+\s*(\p{Lu}[\p{L}.' ]{0,40})$/u, last) do
+          [_, quote, name] -> List.replace_at(lines, -1, quote) ++ ["— " <> String.trim(name)]
+          nil -> lines
+        end
+
+      _ ->
+        lines
+    end
   end
 
   @doc "Admin page frame."
