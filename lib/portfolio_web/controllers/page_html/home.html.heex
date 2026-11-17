@@ -33,17 +33,17 @@
       <div class="quiz-top">
         <p class="quiz-high" data-quiz-high aria-live="polite">
           <%= if @quiz_high do %>
-            🏆 High score <b>{@quiz_high.score}</b> by <b>{@quiz_high.name}</b>
+            High score <b>{@quiz_high.score}</b> by <b>{@quiz_high.name}</b>
           <% else %>
-            🏆 No high score yet. Be the first!
+            No high score yet. Be the first!
           <% end %>
         </p>
         <div class="quiz-stats">
           <span class="quiz-score">
             Score <b data-quiz-score>0</b><span class="quiz-gain" data-quiz-gain aria-hidden="true"></span>
           </span>
-          <span>⏱ <b data-quiz-time>0:00</b></span>
-          <span class="quiz-streak" data-quiz-streak hidden>🔥 <span data-quiz-streak-n>3</span> in a row!</span>
+          <span>Time <b data-quiz-time>0:00</b></span>
+          <span class="quiz-streak" data-quiz-streak hidden><span data-quiz-streak-n>3</span> in a row!</span>
         </div>
       </div>
 

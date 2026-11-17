@@ -112,7 +112,11 @@ defmodule Portfolio.Quiz do
           })
           |> advance()
 
-        {:ok, run, %{correct: correct?, correct_choice: question.correct, gained: gained}}
+        # The explanation is only revealed after a wrong answer.
+        explanation = if correct?, do: nil, else: question.explanation
+
+        {:ok, run,
+         %{correct: correct?, correct_choice: question.correct, gained: gained, explanation: explanation}}
     end
   end
 

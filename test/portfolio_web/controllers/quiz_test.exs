@@ -154,6 +154,47 @@ defmodule PortfolioWeb.QuizTest do
     assert state["elapsed_ms"] >= 30
   end
 
+  test "the explanation is shown only after a wrong answer", %{conn: conn} do
+    for i <- 1..2 do
+      {:ok, _} =
+        Quiz.create_question(%{
+          text: "Explained #{i}?",
+          option_a: "Right",
+          option_b: "Wrong",
+          correct: "a",
+          explanation: "Because #{i} reasons."
+        })
+    end
+
+    {conn, data} = json_post(conn, ~p"/quiz/start")
+    refute inspect(data) =~ "reasons"
+
+    {conn, data} = json_post(conn, ~p"/quiz/answer", %{choice: "a"})
+    assert data["result"]["correct"]
+    assert data["result"]["explanation"] == nil
+
+    {_conn, data} = json_post(conn, ~p"/quiz/answer", %{choice: "b"})
+    refute data["result"]["correct"]
+    assert data["result"]["explanation"] =~ "reasons."
+  end
+
+  test "the reason must be one short sentence" do
+    assert {:error, cs} =
+             Quiz.create_question(%{
+               text: "Q?", option_a: "1", option_b: "2", correct: "a",
+               explanation: String.duplicate("x", 121)
+             })
+
+    assert cs.errors[:explanation]
+  end
+
+  test "a wrong answer without an explanation just has none", %{conn: conn} do
+    add_questions(1)
+    {conn, data} = json_post(conn, ~p"/quiz/start")
+    {_conn, data} = json_post(conn, ~p"/quiz/answer", %{choice: wrong_choice(data)})
+    assert data["result"]["explanation"] == nil
+  end
+
   test "only active questions are used" do
     [q1 | _] = add_questions(3)
     {:ok, _} = Quiz.update_question(q1, %{active: false})
@@ -178,8 +219,12 @@ defmodule PortfolioWeb.QuizTest do
       [q] = Quiz.list_questions()
       assert q.correct == "a"
 
-      put(recycle(conn), ~p"/admin/questions/#{q.id}", question: %{correct: "b"})
-      assert [%{correct: "b"}] = Quiz.list_questions()
+      put(recycle(conn), ~p"/admin/questions/#{q.id}",
+        question: %{correct: "b", explanation: "  8 × 8 = 64 squares.  "}
+      )
+
+      assert [%{correct: "b", explanation: "8 × 8 = 64 squares."}] = Quiz.list_questions()
+      assert conn |> recycle() |> get(~p"/admin/questions") |> html_response(200) =~ "💡"
 
       delete(recycle(conn), ~p"/admin/questions/#{q.id}")
       assert Quiz.list_questions() == []

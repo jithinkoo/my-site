@@ -41,6 +41,13 @@ defmodule PortfolioWeb.Admin.QuestionHTML do
         </div>
         <p :for={{msg, _} <- @form[:correct].errors} class="field-error">{msg}</p>
       </div>
+      <.input
+        field={@form[:explanation]}
+        label="Short reason (optional)"
+        placeholder="e.g. 8 × 8 = 64 squares!"
+        hint="One short sentence. Pops up for a couple of seconds only when someone answers wrong. Up to 120 characters."
+        maxlength="120"
+      />
       <.input field={@form[:active]} type="checkbox" label="Use this question in the quiz" />
       <div class="actions">
         <button type="submit" class="button">Save</button>

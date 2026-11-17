@@ -23,7 +23,10 @@
     </thead>
     <tbody>
       <tr :for={q <- @questions}>
-        <td><a href={~p"/admin/questions/#{q}/edit"}>{q.text}</a></td>
+        <td>
+          <a href={~p"/admin/questions/#{q}/edit"}>{q.text}</a>
+          <span :if={q.explanation} class="muted" title="Has an explanation"> 💡</span>
+        </td>
         <td>{if q.correct == "a", do: q.option_a, else: q.option_b}</td>
         <td>
           <span class={["badge", q.active && "badge-live"]}>{if q.active, do: "In use", else: "Off"}</span>
