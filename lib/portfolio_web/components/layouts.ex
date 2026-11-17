@@ -75,10 +75,32 @@ defmodule PortfolioWeb.Layouts do
         fetchpriority="high"
       />
       <figcaption :if={@profile.photo_caption not in [nil, ""]} class="photo-caption">
-        {@profile.photo_caption}
+        <span
+          :for={{line, signature?} <- caption_lines(@profile.photo_caption)}
+          class={["caption-line", signature? && "photo-signature"]}
+        >
+          {line}
+        </span>
       </figcaption>
     </figure>
     """
+  end
+
+  @doc """
+  Splits the photo text into lines. A line starting with a dash is a
+  signature: "-Jithin" or "— Jithin" both show as "— Jithin".
+  """
+  def caption_lines(text) do
+    text
+    |> String.split(~r/\R/u, trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(fn line ->
+      case Regex.run(~r/^[-–—]+\s*(.+)$/u, line) do
+        [_, name] -> {"— " <> name, true}
+        nil -> {line, false}
+      end
+    end)
   end
 
   @doc "Admin page frame."

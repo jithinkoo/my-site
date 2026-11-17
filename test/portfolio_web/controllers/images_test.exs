@@ -110,6 +110,26 @@ defmodule PortfolioWeb.ImagesTest do
     assert home =~ "/assets/js/site.js"
   end
 
+  test "a dash line in the photo text becomes a signature", %{conn: conn} do
+    conn = log_in(conn)
+
+    put(conn, ~p"/admin/profile",
+      profile: %{photo_caption: "Born by slow rivers.\r\n-Jithin", photo: upload(@png, "me.png")}
+    )
+
+    html = build_conn() |> get(~p"/") |> html_response(200)
+    assert html =~ ~r{class="caption-line\s*"[^>]*>\s*Born by slow rivers.\s*</span>}
+    assert html =~ ~r{class="caption-line photo-signature"[^>]*>\s*— Jithin\s*</span>}
+  end
+
+  test "caption_lines handles dashes, blank lines and plain text" do
+    alias PortfolioWeb.Layouts
+
+    assert Layouts.caption_lines("One line") == [{"One line", false}]
+    assert Layouts.caption_lines("Quote\n\n— Jithin") == [{"Quote", false}, {"— Jithin", true}]
+    assert Layouts.caption_lines("Quote\n--  Jithin ") == [{"Quote", false}, {"— Jithin", true}]
+  end
+
   test "no photo means no panel and a single-column page", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
     refute html =~ ~s(class="photo-panel")

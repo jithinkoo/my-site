@@ -999,6 +999,19 @@ nav a[aria-current="page"] {
   transition: color 0.7s ease, text-shadow 0.7s ease;
 }
 
+.caption-line {
+  display: block;
+}
+
+.photo-signature {
+  margin-top: 0.9em;
+  font-family: var(--sans);
+  font-style: normal;
+  font-size: 0.5em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
 .photo-caption::before {
   content: "";
   display: block;
