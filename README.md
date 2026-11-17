@@ -149,7 +149,6 @@ Untick **Published** to keep a post as a private draft.
 | Journey | Goals (Dreaming / Working on it / Done), Achievements timeline, Success & Failure stories | Admin → Journey; stories are posts with type *Success story* / *Failure story* |
 | Thoughts | Posts with type *Thought* | Admin → Posts |
 | Places | Posts with type *Place I visited* (location, visited on, cover photo) | Admin → Posts |
-| Jargon | Words explained simply, A–Z | Admin → Jargon |
 | Gallery | Photos with caption and place | Admin → Images & gallery |
 
 Post addresses follow the type: `/thoughts/...`, `/stories/...`, `/places/...`.

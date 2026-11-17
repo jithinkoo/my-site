@@ -10,16 +10,59 @@
     </p>
   </section>
 
-  <section class="playground reveal reveal-5" aria-labelledby="playground-title">
+  <section class="playground reveal reveal-5" aria-labelledby="playground-title" data-playground>
     <div class="playground-head">
       <h2 id="playground-title" class="section-title-inline">Little things in motion</h2>
-      <p class="hint playground-hint">
-        <span class="hint-mouse">Move your mouse to push things around. Click to drop something new.</span>
-        <span class="hint-touch">Drag to push things around. Tap to drop something new.</span>
-      </p>
+      <div class="play-tabs" role="tablist" aria-label="Watch or play">
+        <button type="button" role="tab" class="play-tab is-active" aria-selected="true" data-mode="watch">
+          Watch
+        </button>
+        <button type="button" role="tab" class="play-tab" aria-selected="false" data-mode="quiz">
+          Quiz
+        </button>
+      </div>
     </div>
+    <p class="hint playground-hint" data-hint-watch>
+      <span class="hint-mouse">Move your mouse to push things around. Click to drop something new.</span>
+      <span class="hint-touch">Drag to push things around. Tap to drop something new.</span>
+    </p>
+
     <canvas class="physics" data-physics aria-hidden="true"></canvas>
+
+    <div class="quiz" data-quiz hidden>
+      <div class="quiz-top">
+        <p class="quiz-high" data-quiz-high aria-live="polite">
+          <%= if @quiz_high do %>
+            🏆 High score <b>{@quiz_high.score}</b> by <b>{@quiz_high.name}</b>
+          <% else %>
+            🏆 No high score yet. Be the first!
+          <% end %>
+        </p>
+        <div class="quiz-stats">
+          <span class="quiz-score">
+            Score <b data-quiz-score>0</b><span class="quiz-gain" data-quiz-gain aria-hidden="true"></span>
+          </span>
+          <span>⏱ <b data-quiz-time>0:00</b></span>
+          <span class="quiz-streak" data-quiz-streak hidden>🔥 <span data-quiz-streak-n>3</span> in a row!</span>
+        </div>
+      </div>
+
+      <div class="quiz-stage">
+        <canvas class="quiz-mascot" data-quiz-mascot aria-hidden="true"></canvas>
+        <div class="quiz-card" data-quiz-card aria-live="polite">
+          <p class="quiz-q">
+            {if @quiz_count > 0,
+              do: "#{@quiz_count} quick questions, two choices each. Ready?",
+              else: "Questions are on their way. Check back soon!"}
+          </p>
+          <button :if={@quiz_count > 0} type="button" class="button" data-quiz-start>Start</button>
+        </div>
+      </div>
+    </div>
+
     <script defer src={~p"/assets/js/scene.js"}>
+    </script>
+    <script defer src={~p"/assets/js/quiz.js"}>
     </script>
   </section>
 

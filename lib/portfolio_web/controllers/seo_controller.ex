@@ -57,15 +57,14 @@ defmodule PortfolioWeb.SeoController do
     |> send_resp(200, body)
   end
 
-  # Journey, Places and Jargon pages, when they have something to show.
+  # Journey and Places pages, when they have something to show.
   defp section_pages(posts) do
     kinds = MapSet.new(posts, & &1.kind)
     journey? = Portfolio.Journey.list_all() != [] or MapSet.member?(kinds, "success") or MapSet.member?(kinds, "failure")
 
     [
       journey? && {"/journey", nil, "monthly", "0.7"},
-      MapSet.member?(kinds, "place") && {"/places", nil, "monthly", "0.7"},
-      Portfolio.Glossary.list() != [] && {"/jargon", nil, "monthly", "0.6"}
+      MapSet.member?(kinds, "place") && {"/places", nil, "monthly", "0.7"}
     ]
     |> Enum.filter(& &1)
   end

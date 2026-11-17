@@ -12,7 +12,7 @@ defmodule Portfolio.RateLimiter do
 
   @doc "Returns :ok and counts the action, or {:error, :rate_limited}."
   def hit(key, limit, window_ms) do
-    hashed = :crypto.hash(:sha256, to_string(key))
+    hashed = :crypto.hash(:sha256, :erlang.term_to_binary(key))
     now = System.monotonic_time(:millisecond)
 
     recent =

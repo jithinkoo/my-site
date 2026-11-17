@@ -7,6 +7,8 @@ defmodule PortfolioWeb.PageController do
     render(conn, :home,
       posts: Blog.list_published_posts(limit: 5),
       comment_counts: Blog.comment_counts(),
+      quiz_high: Portfolio.Quiz.high_score(),
+      quiz_count: min(Portfolio.Quiz.active_question_count(), 20),
       meta_description: PortfolioWeb.Seo.snippet(conn.assigns.profile.intro, 200)
     )
   end

@@ -1,0 +1,12 @@
+<Layouts.admin flash={@flash}>
+  <h1>Edit question</h1>
+  <.question_form form={@form} action={~p"/admin/questions/#{@question}"} method="put" />
+
+  <details class="danger-zone">
+    <summary>Delete this question</summary>
+    <.form for={%{}} action={~p"/admin/questions/#{@question}"} method="delete">
+      <p>This can't be undone.</p>
+      <button type="submit" class="button button-danger">Delete permanently</button>
+    </.form>
+  </details>
+</Layouts.admin>

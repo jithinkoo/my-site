@@ -2,7 +2,7 @@ defmodule PortfolioWeb.SectionsTest do
   use PortfolioWeb.ConnCase, async: false
 
   import Portfolio.DataCase, only: [errors_on: 1]
-  alias Portfolio.{Blog, Glossary, Journey, RateLimiter}
+  alias Portfolio.{Blog, Journey, RateLimiter}
 
   setup do
     RateLimiter.reset()
@@ -118,53 +118,22 @@ defmodule PortfolioWeb.SectionsTest do
     end
   end
 
-  describe "jargon page" do
-    test "terms are listed A–Z with meanings and an index" do
-      {:ok, _} = Glossary.create(%{term: "Latency", meaning: "How long you wait for an answer."})
-      {:ok, _} = Glossary.create(%{term: "API", meaning: "A menu one program offers another.", explanation: "Like a **restaurant menu**."})
-
-      html = build_conn() |> get(~p"/jargon") |> html_response(200)
-      [first_pos, second_pos] = Enum.map(["API", "Latency"], &(:binary.match(html, ">" <> &1 <> "<") |> elem(0)))
-      assert first_pos < second_pos
-      assert html =~ "A menu one program offers another."
-      assert html =~ "<strong>restaurant menu</strong>"
-      assert html =~ ~s(id="term-api")
-      assert html =~ ~s(href="#letter-l")
-    end
-
-    test "the same term can't be added twice (any case)" do
-      {:ok, _} = Glossary.create(%{term: "Cache", meaning: "A nearby copy."})
-      assert {:error, cs} = Glossary.create(%{term: "cache", meaning: "Again"})
-      assert "is already in the list" in errors_on(cs).term
-    end
-
-    test "terms are managed in admin", %{conn: conn} do
-      assert build_conn() |> get(~p"/admin/jargon") |> redirected_to() == ~p"/admin/login"
-
-      conn = log_in(conn)
-      post(conn, ~p"/admin/jargon", jargon: %{term: "Deploy", meaning: "Putting new code live."})
-      [t] = Glossary.list()
-
-      put(recycle(conn), ~p"/admin/jargon/#{t.id}", jargon: %{meaning: "Sending new code out to users."})
-      assert [%{meaning: "Sending new code out to users."}] = Glossary.list()
-
-      delete(recycle(conn), ~p"/admin/jargon/#{t.id}")
-      assert Glossary.list() == []
-    end
+  test "the Jargon section is gone" do
+    assert build_conn() |> get("/jargon") |> response(404)
+    refute build_conn() |> get(~p"/") |> html_response(200) =~ ~s(href="/jargon")
   end
 
   describe "sitemap" do
     test "includes the new sections when they have content" do
       {:ok, _} = publish(%{title: "Kanyakumari", kind: "place"})
-      {:ok, _} = Glossary.create(%{term: "Cache", meaning: "A nearby copy."})
       {:ok, _} = Journey.create(%{kind: "achievement", title: "First 10k"})
 
       xml = build_conn() |> get(~p"/sitemap.xml") |> response(200)
       base = PortfolioWeb.Endpoint.url()
       assert xml =~ "<loc>#{base}/places</loc>"
       assert xml =~ "<loc>#{base}/places/kanyakumari</loc>"
-      assert xml =~ "<loc>#{base}/jargon</loc>"
       assert xml =~ "<loc>#{base}/journey</loc>"
+      refute xml =~ "/jargon"
     end
   end
 end

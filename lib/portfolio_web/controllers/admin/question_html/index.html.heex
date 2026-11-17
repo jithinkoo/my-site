@@ -1,0 +1,63 @@
+<Layouts.admin flash={@flash}>
+  <div class="admin-head">
+    <h1>Quiz</h1>
+    <a href={~p"/admin/questions/new"} class="button">Add a question</a>
+  </div>
+  <p class="muted">
+    Two-option questions for the Quiz on your home page. Each correct answer is worth {Portfolio.Quiz.points_per_correct()} points. The 4th step always asks the player's name.
+  </p>
+
+  <p :if={@high} class="hint">
+    Current high score: <strong>{@high.score}</strong> by <strong>{@high.name}</strong> ({duration(@high.duration_ms)})
+  </p>
+
+  <p :if={@questions == []} class="muted">No questions yet. Add your first one.</p>
+
+  <table :if={@questions != []} class="admin-table">
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>Answer</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr :for={q <- @questions}>
+        <td><a href={~p"/admin/questions/#{q}/edit"}>{q.text}</a></td>
+        <td>{if q.correct == "a", do: q.option_a, else: q.option_b}</td>
+        <td>
+          <span class={["badge", q.active && "badge-live"]}>{if q.active, do: "In use", else: "Off"}</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="admin-subhead">Recent scores</h2>
+  <p :if={@scores == []} class="muted">Nobody has played yet.</p>
+  <table :if={@scores != []} class="admin-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Score</th>
+        <th>Time</th>
+        <th>When</th>
+        <th><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr :for={s <- @scores}>
+        <td>{s.name}</td>
+        <td>{s.score} <span class="muted">({s.correct_count} right)</span></td>
+        <td class="nowrap">{duration(s.duration_ms)}</td>
+        <td class="nowrap">{short_date(s.inserted_at)}</td>
+        <td class="right">
+          <.form for={%{}} action={~p"/admin/quiz-scores/#{s.id}"} method="delete" class="inline-form">
+            <button type="submit" class="link-button danger-link" onclick="return confirm('Delete this score?')">
+              Delete
+            </button>
+          </.form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</Layouts.admin>

@@ -184,12 +184,12 @@ defmodule PortfolioWeb.CommunityTest do
       assert Media.list_gallery() == []
     end
 
-    test "menu order: About, Journey, Thoughts, Places, Jargon, Gallery" do
+    test "menu order: About, Journey, Thoughts, Places, Gallery" do
       html = build_conn() |> get(~p"/") |> html_response(200)
       [nav] = Regex.run(~r{<nav aria-label="Main">.*?</nav>}s, html)
 
       assert Regex.scan(~r{>(\w+)</a>}, nav, capture: :all_but_first) ==
-               [["About"], ["Journey"], ["Thoughts"], ["Places"], ["Jargon"], ["Gallery"]]
+               [["About"], ["Journey"], ["Thoughts"], ["Places"], ["Gallery"]]
     end
   end
 

@@ -40,7 +40,6 @@ defmodule PortfolioWeb.Layouts do
               <a href={~p"/journey"} aria-current={@active == :journey && "page"}>Journey</a>
               <a href={~p"/thoughts"} aria-current={@active == :thoughts && "page"}>Thoughts</a>
               <a href={~p"/places"} aria-current={@active == :places && "page"}>Places</a>
-              <a href={~p"/jargon"} aria-current={@active == :jargon && "page"}>Jargon</a>
               <a href={~p"/gallery"} aria-current={@active == :gallery && "page"}>Gallery</a>
               <.theme_toggle />
             </nav>
@@ -170,7 +169,7 @@ defmodule PortfolioWeb.Layouts do
         <nav aria-label="Admin">
           <a href={~p"/admin"}>Posts</a>
           <a href={~p"/admin/milestones"}>Journey</a>
-          <a href={~p"/admin/jargon"}>Jargon</a>
+          <a href={~p"/admin/questions"}>Quiz</a>
           <a href={~p"/admin/images"}>Images &amp; gallery</a>
           <a href={~p"/admin/profile"}>Profile</a>
           <a href={~p"/"} target="_blank">View site ↗</a>

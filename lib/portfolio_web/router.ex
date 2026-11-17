@@ -13,6 +13,14 @@ defmodule PortfolioWeb.Router do
     plug :load_profile
   end
 
+  # The quiz talks JSON but still needs the session and CSRF protection.
+  pipeline :quiz do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
   pipeline :noindex do
     plug :put_noindex
   end
@@ -34,8 +42,16 @@ defmodule PortfolioWeb.Router do
     get "/places", PostController, :places
     get "/places/:slug", PostController, :show
     post "/posts/:slug/comments", PostController, :create_comment
-    get "/jargon", JargonController, :index
     get "/gallery", GalleryController, :index
+  end
+
+  scope "/quiz", PortfolioWeb do
+    pipe_through :quiz
+
+    get "/state", QuizController, :state
+    post "/start", QuizController, :start
+    post "/answer", QuizController, :answer
+    post "/name", QuizController, :name
   end
 
   scope "/", PortfolioWeb do
@@ -63,7 +79,8 @@ defmodule PortfolioWeb.Router do
     put "/images/:id/slideshow", ImageController, :slideshow
     delete "/comments/:id", CommentController, :delete
     resources "/milestones", MilestoneController, except: [:show]
-    resources "/jargon", JargonController, except: [:show]
+    resources "/questions", QuestionController, except: [:show]
+    delete "/quiz-scores/:id", QuestionController, :delete_score
     get "/profile", ProfileController, :edit
     put "/profile", ProfileController, :update
   end
