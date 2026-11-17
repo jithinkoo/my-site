@@ -34,6 +34,7 @@ defmodule PortfolioWeb.Router do
   scope "/", PortfolioWeb do
     get "/feed.xml", FeedController, :index
     get "/media/:id", MediaController, :show
+    get "/health", HealthController, :show
   end
 
   scope "/admin", PortfolioWeb.Admin, as: :admin do
