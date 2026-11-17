@@ -9,16 +9,32 @@ defmodule PortfolioWeb.PostController do
 
   def index(conn, _params) do
     render(conn, :index,
-      posts: Blog.list_published_posts(),
+      posts: Blog.list_published_posts(kind: "thought"),
       comment_counts: Blog.comment_counts(),
       page_title: "Thoughts"
     )
   end
 
+  def places(conn, _params) do
+    render(conn, :places,
+      posts: Blog.list_published_posts(kind: "place"),
+      page_title: "Places",
+      meta_description: "Places I've visited and what stayed with me."
+    )
+  end
+
+  # /thoughts/:slug, /stories/:slug and /places/:slug all land here. If a
+  # post is opened under the wrong section (e.g. its type changed), the
+  # visitor is sent to the right address.
   def show(conn, %{"slug" => slug}) do
     case Blog.get_published_post_by_slug(slug) do
-      nil -> not_found(conn)
-      post -> render_post(conn, post, Blog.change_comment())
+      nil ->
+        not_found(conn)
+
+      post ->
+        if conn.request_path == Blog.path(post),
+          do: render_post(conn, post, Blog.change_comment()),
+          else: redirect(conn, to: Blog.path(post))
     end
   end
 
@@ -35,7 +51,7 @@ defmodule PortfolioWeb.PostController do
           attrs["website"] not in [nil, ""] ->
             conn
             |> put_flash(:info, "Thanks for your comment.")
-            |> redirect(to: ~p"/thoughts/#{post.slug}" <> "#comments")
+            |> redirect(to: Blog.path(post) <> "#comments")
 
           RateLimiter.hit(visitor_key(conn), @comment_limit, @comment_window_ms) != :ok ->
             conn
@@ -48,7 +64,7 @@ defmodule PortfolioWeb.PostController do
               {:ok, _comment} ->
                 conn
                 |> put_flash(:info, "Thanks! Your comment is up.")
-                |> redirect(to: ~p"/thoughts/#{post.slug}" <> "#comments")
+                |> redirect(to: Blog.path(post) <> "#comments")
 
               {:error, changeset} ->
                 conn
@@ -64,11 +80,16 @@ defmodule PortfolioWeb.PostController do
       post: post,
       comments: Blog.list_comments(post),
       comment_form: to_form(comment_changeset, as: :comment),
+      active: section(post),
       page_title: post.title,
       meta_description: Blog.excerpt(post),
       meta_image_id: post.cover_image_id
     )
   end
+
+  defp section(%{kind: "place"}), do: :places
+  defp section(%{kind: kind}) when kind in ["success", "failure"], do: :journey
+  defp section(_), do: :thoughts
 
   defp not_found(conn) do
     conn

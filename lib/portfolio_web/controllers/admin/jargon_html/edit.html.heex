@@ -1,0 +1,12 @@
+<Layouts.admin flash={@flash}>
+  <h1>Edit term</h1>
+  <.jargon_form form={@form} action={~p"/admin/jargon/#{@term}"} method="put" />
+
+  <details class="danger-zone">
+    <summary>Delete this term</summary>
+    <.form for={%{}} action={~p"/admin/jargon/#{@term}"} method="delete">
+      <p>This can't be undone.</p>
+      <button type="submit" class="button button-danger">Delete permanently</button>
+    </.form>
+  </details>
+</Layouts.admin>

@@ -68,8 +68,8 @@ defmodule PortfolioWeb.Seo do
       "description" => Portfolio.Blog.excerpt(post),
       "datePublished" => post.published_at && DateTime.to_iso8601(post.published_at),
       "dateModified" => DateTime.to_iso8601(post.updated_at),
-      "url" => base <> "/thoughts/" <> post.slug,
-      "mainEntityOfPage" => base <> "/thoughts/" <> post.slug,
+      "url" => base <> Portfolio.Blog.path(post),
+      "mainEntityOfPage" => base <> Portfolio.Blog.path(post),
       "image" => post.cover_image_id && absolute(Media.path(post.cover_image_id)),
       "author" => %{"@id" => base <> "/#person"}
     }

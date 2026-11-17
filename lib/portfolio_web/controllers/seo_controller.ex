@@ -17,7 +17,8 @@ defmodule PortfolioWeb.SeoController do
         {"/thoughts", latest, "weekly", "0.8"}
       ] ++
         if(gallery != [], do: [{"/gallery", hd(gallery).inserted_at, "monthly", "0.6"}], else: []) ++
-        Enum.map(posts, &{"/thoughts/" <> &1.slug, &1.updated_at, "monthly", "0.7"})
+        section_pages(posts) ++
+        Enum.map(posts, &{Blog.path(&1), &1.updated_at, "monthly", "0.7"})
 
     urls =
       Enum.map_join(pages, "\n", fn {path, lastmod, freq, priority} ->
@@ -54,6 +55,19 @@ defmodule PortfolioWeb.SeoController do
     conn
     |> put_resp_content_type("text/plain")
     |> send_resp(200, body)
+  end
+
+  # Journey, Places and Jargon pages, when they have something to show.
+  defp section_pages(posts) do
+    kinds = MapSet.new(posts, & &1.kind)
+    journey? = Portfolio.Journey.list_all() != [] or MapSet.member?(kinds, "success") or MapSet.member?(kinds, "failure")
+
+    [
+      journey? && {"/journey", nil, "monthly", "0.7"},
+      MapSet.member?(kinds, "place") && {"/places", nil, "monthly", "0.7"},
+      Portfolio.Glossary.list() != [] && {"/jargon", nil, "monthly", "0.6"}
+    ]
+    |> Enum.filter(& &1)
   end
 
   defp lastmod_tag(nil), do: ""

@@ -141,6 +141,20 @@ Admin → **Write a new post**. Posts use Markdown:
 
 Untick **Published** to keep a post as a private draft.
 
+## Sections
+
+| Menu | What it shows | Where you manage it |
+|---|---|---|
+| About | Your story | Admin → Profile |
+| Journey | Goals (Dreaming / Working on it / Done), Achievements timeline, Success & Failure stories | Admin → Journey; stories are posts with type *Success story* / *Failure story* |
+| Thoughts | Posts with type *Thought* | Admin → Posts |
+| Places | Posts with type *Place I visited* (location, visited on, cover photo) | Admin → Posts |
+| Jargon | Words explained simply, A–Z | Admin → Jargon |
+| Gallery | Photos with caption and place | Admin → Images & gallery |
+
+Post addresses follow the type: `/thoughts/...`, `/stories/...`, `/places/...`.
+Changing a post's type later is safe: old links redirect to the new address.
+
 ## Comments
 
 Every published post has a comment form (name + comment). Comments appear

@@ -1,0 +1,4 @@
+<Layouts.admin flash={@flash}>
+  <h1>{if @kind == "goal", do: "New goal", else: "New achievement"}</h1>
+  <.milestone_form form={@form} action={~p"/admin/milestones"} kind={@kind} />
+</Layouts.admin>

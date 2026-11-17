@@ -12,14 +12,23 @@ defmodule Portfolio.Blog.Post do
     field :published, :boolean, default: false
     field :published_at, :utc_datetime
     field :cover_image_id, :id
+    field :kind, :string, default: "thought"
+    field :location, :string
+    field :visited_on, :date
     has_many :comments, Portfolio.Blog.Comment
 
     timestamps(type: :utc_datetime)
   end
 
+  @kinds ~w(thought success failure place)
+  def kinds, do: @kinds
+
   def changeset(post, attrs) do
     post
-    |> cast(attrs, [:title, :slug, :summary, :body, :published, :cover_image_id])
+    |> cast(attrs, [:title, :slug, :summary, :body, :published, :cover_image_id, :kind, :location, :visited_on])
+    |> validate_inclusion(:kind, @kinds)
+    |> validate_length(:location, max: 120)
+    |> check_constraint(:kind, name: :known_kind)
     |> foreign_key_constraint(:cover_image_id)
     |> validate_required([:title, :body])
     |> validate_length(:title, max: 200)

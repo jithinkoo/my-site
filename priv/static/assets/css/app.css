@@ -212,8 +212,25 @@ a:hover {
 
 nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1.1rem;
+  gap: 0.3rem 1.1rem;
+}
+
+/* With six sections the menu needs room: on narrower screens the name sits
+   on its own line and the menu wraps underneath. */
+@media (max-width: 48rem) {
+  .header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding-top: 0.9rem;
+    padding-bottom: 0.8rem;
+  }
+
+  nav {
+    gap: 0.35rem 0.95rem;
+  }
 }
 
 nav a {
@@ -911,6 +928,306 @@ nav a[aria-current="page"] {
   color: var(--danger);
   font-size: 0.88rem;
   padding: 0;
+}
+
+/* ---------- Places ---------- */
+
+.place-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1.6rem;
+}
+
+.place-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.place-photo {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.place-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.place-card:hover .place-photo img {
+  transform: scale(1.04);
+}
+
+.place-photo-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 2rem;
+}
+
+.place-body {
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.place-body h3 {
+  margin-bottom: 0.25rem;
+}
+
+.place-body .meta {
+  margin-bottom: 0.6rem;
+}
+
+.place-body .post-summary {
+  font-size: 1rem;
+}
+
+.place-body .read-more {
+  margin-left: 0;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+}
+
+.meta-place {
+  margin-right: 0.2rem;
+}
+
+/* ---------- Journey ---------- */
+
+.journey-section {
+  margin-bottom: 3.2rem;
+}
+
+.journey-note {
+  margin: 0.8rem 0 0;
+}
+
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.goal {
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.goal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+}
+
+.goal-head h3 {
+  margin: 0;
+}
+
+.status {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.18rem 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.status-working {
+  background: #e8f0fa;
+  color: #3d6a9e;
+}
+
+.status-done {
+  background: var(--live-soft);
+  color: var(--live);
+}
+
+:root[data-theme="dark"] .status-working {
+  background: #1f2a36;
+  color: #9cc1ea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .status-working {
+    background: #1f2a36;
+    color: #9cc1ea;
+  }
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0 0 1.4rem;
+  border-left: 2px solid var(--rule);
+}
+
+.timeline-item {
+  position: relative;
+  padding: 0.9rem 0 0.9rem 0.4rem;
+}
+
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -1.4rem;
+  top: 1.35rem;
+  width: 12px;
+  height: 12px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--bg);
+}
+
+.timeline-when {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.2rem;
+}
+
+.timeline-item h3 {
+  margin: 0 0 0.3rem;
+}
+
+.small-prose {
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.small-prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Jargon ---------- */
+
+.az {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: -1rem 0 2rem;
+  font-family: var(--sans);
+}
+
+.az a {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.az a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.jargon-list {
+  margin: 0;
+}
+
+.jargon {
+  position: relative;
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--rule);
+  scroll-margin-top: 1.5rem;
+}
+
+.jargon:target {
+  background: var(--accent-soft);
+  border-radius: var(--radius);
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.jargon-letter {
+  display: block;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+  scroll-margin-top: 1.5rem;
+}
+
+.jargon dt {
+  margin: 0 0 0.2rem;
+}
+
+.jargon-term {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.jargon-term:hover {
+  color: var(--accent);
+}
+
+.jargon dd {
+  margin: 0;
+}
+
+.jargon-meaning {
+  margin: 0 0 0.5rem;
+}
+
+/* ---------- Admin form bits ---------- */
+
+.select {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+}
+
+.field input[type="date"],
+.field input[type="number"] {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0 1rem;
+}
+
+.kind-badge {
+  margin-left: 0.4rem;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* ---------- Post list: excerpt, thumbnail, read more ---------- */

@@ -17,7 +17,10 @@
     </thead>
     <tbody>
       <tr :for={post <- @posts}>
-        <td><a href={~p"/admin/posts/#{post}/edit"}>{post.title}</a></td>
+        <td>
+          <a href={~p"/admin/posts/#{post}/edit"}>{post.title}</a>
+          <span :if={post.kind != "thought"} class="badge kind-badge">{Portfolio.Blog.kind_label(post.kind)}</span>
+        </td>
         <td>
           <span class={["badge", post.published && "badge-live"]}>
             {if post.published, do: "Live", else: "Draft"}
@@ -26,13 +29,13 @@
         <td class="nowrap">
           {short_date(post.published_at || post.inserted_at)}
           <span :if={Map.get(@comment_counts, post.id, 0) > 0} class="muted">
-            · <a :if={post.published} href={~p"/thoughts/#{post.slug}" <> "#comments"}>
+            · <a :if={post.published} href={Portfolio.Blog.path(post) <> "#comments"}>
               {Map.get(@comment_counts, post.id)} 💬
             </a>
           </span>
         </td>
         <td class="nowrap right">
-          <a :if={post.published} href={~p"/thoughts/#{post.slug}"} target="_blank">View ↗</a>
+          <a :if={post.published} href={Portfolio.Blog.path(post)} target="_blank">View ↗</a>
         </td>
       </tr>
     </tbody>

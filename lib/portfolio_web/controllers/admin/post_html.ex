@@ -3,6 +3,15 @@ defmodule PortfolioWeb.Admin.PostHTML do
 
   embed_templates "post_html/*"
 
+  def kinds do
+    [
+      {"thought", "Thought"},
+      {"success", "Success story"},
+      {"failure", "Failure story"},
+      {"place", "Place I visited"}
+    ]
+  end
+
   attr :form, Phoenix.HTML.Form, required: true
   attr :action, :string, required: true
   attr :method, :string, default: "post"
@@ -11,7 +20,31 @@ defmodule PortfolioWeb.Admin.PostHTML do
   def post_form(assigns) do
     ~H"""
     <.form for={@form} action={@action} method={@method} multipart class="editor">
+      <div class="field">
+        <label for="post_kind">Type</label>
+        <select id="post_kind" name="post[kind]" class="select">
+          <option
+            :for={{value, label} <- kinds()}
+            value={value}
+            selected={(@form[:kind].value || "thought") == value}
+          >
+            {label}
+          </option>
+        </select>
+        <p class="hint">
+          Thoughts appear under Thoughts, success and failure stories on Journey, places under Places.
+        </p>
+      </div>
       <.input field={@form[:title]} label="Title" required autofocus />
+      <div class="field-row">
+        <.input
+          field={@form[:location]}
+          label="Location (for places)"
+          placeholder="e.g. Thanjavur, Tamil Nadu"
+          maxlength="120"
+        />
+        <.input field={@form[:visited_on]} type="date" label="Visited on (for places)" />
+      </div>
       <.input
         field={@form[:summary]}
         type="textarea"

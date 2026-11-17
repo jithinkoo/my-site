@@ -37,7 +37,7 @@ defmodule PortfolioWeb.CommunityTest do
   describe "comments" do
     test "a visitor's comment shows under the post right away", %{conn: conn, post: post} do
       conn =
-        post(conn, ~p"/thoughts/heroes/comments",
+        post(conn, ~p"/posts/heroes/comments",
           comment: %{name: "  Asha   R ", body: "Lovely thought.\nMy hero was my teacher."}
         )
 
@@ -51,7 +51,7 @@ defmodule PortfolioWeb.CommunityTest do
     end
 
     test "comments are shown as plain text, never as HTML", %{conn: conn} do
-      post(conn, ~p"/thoughts/heroes/comments",
+      post(conn, ~p"/posts/heroes/comments",
         comment: %{name: "<b>x</b>", body: "<script>alert(1)</script> [link](https://spam.example)"}
       )
 
@@ -62,10 +62,10 @@ defmodule PortfolioWeb.CommunityTest do
     end
 
     test "empty or too long comments are refused with a message", %{conn: conn} do
-      conn = post(conn, ~p"/thoughts/heroes/comments", comment: %{name: "", body: ""})
+      conn = post(conn, ~p"/posts/heroes/comments", comment: %{name: "", body: ""})
       assert html_response(conn, 422) =~ "please fill this in"
 
-      conn = post(build_conn(), ~p"/thoughts/heroes/comments",
+      conn = post(build_conn(), ~p"/posts/heroes/comments",
         comment: %{name: "A", body: String.duplicate("x", 1001)})
 
       assert html_response(conn, 422) =~ "should be at most 1000"
@@ -73,7 +73,7 @@ defmodule PortfolioWeb.CommunityTest do
 
     test "the hidden spam trap silently drops bot comments", %{conn: conn, post: post} do
       conn =
-        post(conn, ~p"/thoughts/heroes/comments",
+        post(conn, ~p"/posts/heroes/comments",
           comment: %{name: "Bot", body: "buy now", website: "http://spam"}
         )
 
@@ -85,13 +85,13 @@ defmodule PortfolioWeb.CommunityTest do
       for i <- 1..3 do
         build_conn()
         |> put_req_header("x-forwarded-for", "203.0.113.9")
-        |> post(~p"/thoughts/heroes/comments", comment: %{name: "N#{i}", body: "hi"})
+        |> post(~p"/posts/heroes/comments", comment: %{name: "N#{i}", body: "hi"})
       end
 
       conn =
         build_conn()
         |> put_req_header("x-forwarded-for", "203.0.113.9")
-        |> post(~p"/thoughts/heroes/comments", comment: %{name: "N4", body: "again"})
+        |> post(~p"/posts/heroes/comments", comment: %{name: "N4", body: "again"})
 
       assert html_response(conn, 429) =~ "wait a few minutes"
       assert length(Blog.list_comments(post)) == 3
@@ -99,14 +99,14 @@ defmodule PortfolioWeb.CommunityTest do
       # someone else can still comment
       build_conn()
       |> put_req_header("x-forwarded-for", "198.51.100.7")
-      |> post(~p"/thoughts/heroes/comments", comment: %{name: "Other", body: "hello"})
+      |> post(~p"/posts/heroes/comments", comment: %{name: "Other", body: "hello"})
 
       assert length(Blog.list_comments(post)) == 4
     end
 
     test "drafts can't be commented on", %{conn: conn} do
       {:ok, _} = Blog.create_post(%{title: "Secret draft", body: "x"})
-      conn = post(conn, ~p"/thoughts/secret-draft/comments", comment: %{name: "A", body: "b"})
+      conn = post(conn, ~p"/posts/secret-draft/comments", comment: %{name: "A", body: "b"})
       assert html_response(conn, 404)
     end
 
@@ -184,11 +184,12 @@ defmodule PortfolioWeb.CommunityTest do
       assert Media.list_gallery() == []
     end
 
-    test "Gallery is in the menu after About and Thoughts" do
+    test "menu order: About, Journey, Thoughts, Places, Jargon, Gallery" do
       html = build_conn() |> get(~p"/") |> html_response(200)
       [nav] = Regex.run(~r{<nav aria-label="Main">.*?</nav>}s, html)
-      assert Regex.scan(~r{>(About|Thoughts|Gallery)</a>}, nav, capture: :all_but_first) ==
-               [["About"], ["Thoughts"], ["Gallery"]]
+
+      assert Regex.scan(~r{>(\w+)</a>}, nav, capture: :all_but_first) ==
+               [["About"], ["Journey"], ["Thoughts"], ["Places"], ["Jargon"], ["Gallery"]]
     end
   end
 

@@ -1,0 +1,38 @@
+<Layouts.admin flash={@flash}>
+  <div class="admin-head">
+    <h1>Journey</h1>
+    <a href={~p"/journey"} target="_blank">View page ↗</a>
+  </div>
+  <p class="muted">
+    Goals and achievements for your Journey page. Success and failure <em>stories</em> are written as posts (choose the type in the post editor).
+  </p>
+
+  <div class="admin-head">
+    <h2>Goals</h2>
+    <a href={~p"/admin/milestones/new?kind=goal"} class="button">Add a goal</a>
+  </div>
+  <p :if={@goals == []} class="muted">No goals yet.</p>
+  <table :if={@goals != []} class="admin-table">
+    <tbody>
+      <tr :for={g <- @goals}>
+        <td><a href={~p"/admin/milestones/#{g}/edit"}>{g.title}</a></td>
+        <td class="nowrap">{Portfolio.Journey.status_label(g.status)}</td>
+        <td class="nowrap muted">{g.when_label}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="admin-head">
+    <h2>Achievements</h2>
+    <a href={~p"/admin/milestones/new?kind=achievement"} class="button">Add an achievement</a>
+  </div>
+  <p :if={@achievements == []} class="muted">No achievements yet.</p>
+  <table :if={@achievements != []} class="admin-table">
+    <tbody>
+      <tr :for={a <- @achievements}>
+        <td><a href={~p"/admin/milestones/#{a}/edit"}>{a.title}</a></td>
+        <td class="nowrap muted">{a.when_label}</td>
+      </tr>
+    </tbody>
+  </table>
+</Layouts.admin>

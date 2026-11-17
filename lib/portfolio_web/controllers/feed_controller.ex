@@ -11,7 +11,7 @@ defmodule PortfolioWeb.FeedController do
 
     items =
       Enum.map_join(posts, "\n", fn post ->
-        link = url(~p"/thoughts/#{post.slug}")
+        link = PortfolioWeb.Endpoint.url() <> Blog.path(post)
 
         """
             <item>

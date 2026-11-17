@@ -1,0 +1,20 @@
+<Layouts.admin flash={@flash}>
+  <div class="admin-head">
+    <h1>Jargon</h1>
+    <a href={~p"/admin/jargon/new"} class="button">Add a term</a>
+  </div>
+  <p class="muted">
+    Words explained simply, shown A–Z on the <a href={~p"/jargon"} target="_blank">Jargon page ↗</a>.
+  </p>
+
+  <p :if={@terms == []} class="muted">No terms yet. Add your first one.</p>
+
+  <table :if={@terms != []} class="admin-table">
+    <tbody>
+      <tr :for={t <- @terms}>
+        <td class="nowrap"><a href={~p"/admin/jargon/#{t}/edit"}>{t.term}</a></td>
+        <td class="muted">{t.meaning}</td>
+      </tr>
+    </tbody>
+  </table>
+</Layouts.admin>

@@ -27,9 +27,14 @@ defmodule PortfolioWeb.Router do
 
     get "/", PageController, :home
     get "/about", PageController, :about
+    get "/journey", JourneyController, :index
     get "/thoughts", PostController, :index
     get "/thoughts/:slug", PostController, :show
-    post "/thoughts/:slug/comments", PostController, :create_comment
+    get "/stories/:slug", PostController, :show
+    get "/places", PostController, :places
+    get "/places/:slug", PostController, :show
+    post "/posts/:slug/comments", PostController, :create_comment
+    get "/jargon", JargonController, :index
     get "/gallery", GalleryController, :index
   end
 
@@ -57,6 +62,8 @@ defmodule PortfolioWeb.Router do
     resources "/images", ImageController, only: [:index, :create, :update, :delete]
     put "/images/:id/slideshow", ImageController, :slideshow
     delete "/comments/:id", CommentController, :delete
+    resources "/milestones", MilestoneController, except: [:show]
+    resources "/jargon", JargonController, except: [:show]
     get "/profile", ProfileController, :edit
     put "/profile", ProfileController, :update
   end

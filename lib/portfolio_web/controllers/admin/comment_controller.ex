@@ -20,7 +20,8 @@ defmodule PortfolioWeb.Admin.CommentController do
   # Return to the post the admin was reading, if the browser says where.
   defp back_to(conn) do
     with [referer | _] <- get_req_header(conn, "referer"),
-         %URI{path: "/thoughts/" <> _ = path} <- URI.parse(referer) do
+         %URI{path: path} when is_binary(path) <- URI.parse(referer),
+         true <- String.starts_with?(path, ["/thoughts/", "/stories/", "/places/"]) do
       path <> "#comments"
     else
       _ -> ~p"/admin"

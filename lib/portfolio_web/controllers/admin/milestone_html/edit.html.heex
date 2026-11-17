@@ -1,0 +1,12 @@
+<Layouts.admin flash={@flash}>
+  <h1>{if @kind == "goal", do: "Edit goal", else: "Edit achievement"}</h1>
+  <.milestone_form form={@form} action={~p"/admin/milestones/#{@milestone}"} method="put" kind={@kind} />
+
+  <details class="danger-zone">
+    <summary>Delete this {if @kind == "goal", do: "goal", else: "achievement"}</summary>
+    <.form for={%{}} action={~p"/admin/milestones/#{@milestone}"} method="delete">
+      <p>This can't be undone.</p>
+      <button type="submit" class="button button-danger">Delete permanently</button>
+    </.form>
+  </details>
+</Layouts.admin>

@@ -1,0 +1,15 @@
+<Layouts.app flash={@flash} profile={@profile} slides={@slides} active={:places}>
+  <header class="page-header">
+    <p class="eyebrow reveal">Places</p>
+    <h1 class="reveal reveal-2">Places I've been</h1>
+    <p class="lede reveal reveal-3">
+      Temples, beaches, hills and city corners: where I went, and what stayed with me.
+    </p>
+  </header>
+
+  <p :if={@posts == []} class="muted">The first place is being written about.</p>
+
+  <div class="place-grid">
+    <.place_card :for={post <- @posts} post={post} />
+  </div>
+</Layouts.app>

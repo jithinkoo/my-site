@@ -1,0 +1,39 @@
+<Layouts.app flash={@flash} profile={@profile} slides={@slides} active={:jargon}>
+  <header class="page-header">
+    <p class="eyebrow reveal">Jargon</p>
+    <h1 class="reveal reveal-2">Jargon, simply explained</h1>
+    <p class="lede reveal reveal-3">
+      Big words make simple ideas sound hard. Here they are in plain language — the way I wish someone had explained them to me.
+    </p>
+  </header>
+
+  <p :if={@terms == []} class="muted">The first words are being explained.</p>
+
+  <nav :if={length(@letters) > 1} class="az" aria-label="Jump to letter">
+    <a :for={l <- @letters} href={"#" <> letter_anchor(l)}>{l}</a>
+  </nav>
+
+  <dl class="jargon-list">
+    <div
+      :for={{term, i} <- Enum.with_index(@terms)}
+      id={anchor(term)}
+      class="jargon"
+    >
+      <span
+        :if={i == 0 or letter(Enum.at(@terms, i - 1)) != letter(term)}
+        id={letter_anchor(letter(term))}
+        class="jargon-letter"
+        aria-hidden="true"
+      >
+        {letter(term)}
+      </span>
+      <dt>
+        <a href={"#" <> anchor(term)} class="jargon-term">{term.term}</a>
+      </dt>
+      <dd>
+        <p class="jargon-meaning">{term.meaning}</p>
+        <div :if={term.explanation} class="prose small-prose">{markdown(term.explanation)}</div>
+      </dd>
+    </div>
+  </dl>
+</Layouts.app>

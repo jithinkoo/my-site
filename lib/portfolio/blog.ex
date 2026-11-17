@@ -7,9 +7,15 @@ defmodule Portfolio.Blog do
 
   ## Public
 
+  @doc """
+  Published posts, newest first. Options:
+    * `:kind`  - one kind ("thought") or a list (["success", "failure"])
+    * `:limit` - at most this many
+  """
   def list_published_posts(opts \\ []) do
     Post
     |> where(published: true)
+    |> maybe_kind(opts[:kind])
     |> order_by(desc: :published_at, desc: :id)
     |> maybe_limit(opts[:limit])
     |> Repo.all()
@@ -18,6 +24,21 @@ defmodule Portfolio.Blog do
   def get_published_post_by_slug(slug) do
     Repo.get_by(Post, slug: slug, published: true)
   end
+
+  @doc "The public address of a post, by its kind."
+  def path(%Post{kind: "place", slug: slug}), do: "/places/" <> slug
+  def path(%Post{kind: kind, slug: slug}) when kind in ["success", "failure"], do: "/stories/" <> slug
+  def path(%Post{slug: slug}), do: "/thoughts/" <> slug
+
+  @doc "Human label for a kind."
+  def kind_label("success"), do: "Success story"
+  def kind_label("failure"), do: "Failure story"
+  def kind_label("place"), do: "Place"
+  def kind_label(_), do: "Thought"
+
+  defp maybe_kind(query, nil), do: query
+  defp maybe_kind(query, kinds) when is_list(kinds), do: where(query, [p], p.kind in ^kinds)
+  defp maybe_kind(query, kind), do: where(query, kind: ^kind)
 
   ## Admin
 

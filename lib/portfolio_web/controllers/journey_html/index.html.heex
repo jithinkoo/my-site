@@ -1,0 +1,58 @@
+<Layouts.app flash={@flash} profile={@profile} slides={@slides} active={:journey}>
+  <header class="page-header">
+    <p class="eyebrow reveal">Journey</p>
+    <h1 class="reveal reveal-2">The road so far</h1>
+    <p class="lede reveal reveal-3">
+      Where I'm heading, what I've reached, and the stories behind both — the wins and the falls.
+    </p>
+  </header>
+
+  <p
+    :if={@goals == [] and @achievements == [] and @successes == [] and @failures == []}
+    class="muted"
+  >
+    This page is still being written.
+  </p>
+
+  <section :if={@goals != []} class="journey-section" aria-labelledby="goals">
+    <h2 id="goals" class="section-title">Goals</h2>
+    <ul class="goal-list">
+      <li :for={goal <- @goals} class="goal">
+        <div class="goal-head">
+          <h3>{goal.title}</h3>
+          <span :if={goal.status} class={status_class(goal.status)}>
+            {Portfolio.Journey.status_label(goal.status)}
+          </span>
+        </div>
+        <p :if={goal.when_label} class="meta">{goal.when_label}</p>
+        <div :if={goal.description} class="prose small-prose">{markdown(goal.description)}</div>
+      </li>
+    </ul>
+  </section>
+
+  <section :if={@achievements != []} class="journey-section" aria-labelledby="achievements">
+    <h2 id="achievements" class="section-title">Achievements</h2>
+    <ol class="timeline">
+      <li :for={item <- @achievements} class="timeline-item">
+        <p :if={item.when_label} class="timeline-when">{item.when_label}</p>
+        <h3>{item.title}</h3>
+        <div :if={item.description} class="prose small-prose">{markdown(item.description)}</div>
+      </li>
+    </ol>
+  </section>
+
+  <section :if={@successes != []} class="journey-section" aria-labelledby="successes">
+    <h2 id="successes" class="section-title">Success stories</h2>
+    <ul class="post-list">
+      <li :for={post <- @successes}><PortfolioWeb.PostHTML.post_item post={post} /></li>
+    </ul>
+  </section>
+
+  <section :if={@failures != []} class="journey-section" aria-labelledby="failures">
+    <h2 id="failures" class="section-title">Failure stories</h2>
+    <p class="hint journey-note">The falls taught me more than the wins. These are the honest ones.</p>
+    <ul class="post-list">
+      <li :for={post <- @failures}><PortfolioWeb.PostHTML.post_item post={post} /></li>
+    </ul>
+  </section>
+</Layouts.app>

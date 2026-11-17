@@ -1,7 +1,12 @@
-<Layouts.app flash={@flash} profile={@profile} slides={@slides} active={:thoughts}>
+<Layouts.app flash={@flash} profile={@profile} slides={@slides} active={@active}>
   <article class="page">
     <header class="page-header">
+      <p :if={@post.kind != "thought"} class="eyebrow">
+        {Portfolio.Blog.kind_label(@post.kind)}
+      </p>
       <p class="meta">
+        <span :if={@post.location} class="meta-place">📍 {@post.location} ·</span>
+        <span :if={@post.visited_on}>Visited {Calendar.strftime(@post.visited_on, "%B %Y")} ·</span>
         <time datetime={DateTime.to_iso8601(@post.published_at)}>{long_date(@post.published_at)}</time>
         · {Portfolio.Blog.reading_minutes(@post)} min read
       </p>
@@ -17,7 +22,7 @@
 
     <footer class="post-footer">
       <p>Written by <a href={~p"/about"}>{@profile.name}</a>.</p>
-      <p><a href={~p"/thoughts"}>← All thoughts</a></p>
+      <p><a href={back_path(@post)}>← {back_label(@post)}</a></p>
     </footer>
   </article>
 
@@ -57,7 +62,7 @@
       </li>
     </ol>
 
-    <.form for={@comment_form} action={~p"/thoughts/#{@post.slug}/comments"} class="comment-form">
+    <.form for={@comment_form} action={~p"/posts/#{@post.slug}/comments"} class="comment-form">
       <h3>Leave a comment</h3>
       <.input field={@comment_form[:name]} label="Your name" maxlength="60" required />
       <.input
