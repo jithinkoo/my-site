@@ -81,7 +81,7 @@
   var phoenix = { active: false, x: 0, y: 30, dir: 1, t: 0, wait: 2.5 };
   var pendulum = { theta: 0.55, omega: 0, length: 64, r: 9 };
   var cloud = { x: 0, y: 62, dropTimer: 6 };
-  var tree = { x: 34 };
+  var tree = { x: 48 };
 
   function cssVar(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -189,7 +189,7 @@
     if (leafTimer <= 0) {
       leafTimer = 1.8 + Math.random() * 1.5;
       if (leaves.length < 8) {
-        leaves.push({ x: tree.x + (Math.random() - 0.5) * 30, y: H - TRACK - 78 + Math.random() * 14,
+        leaves.push({ x: tree.x + (Math.random() - 0.5) * 44, y: H - TRACK - 82 + Math.random() * 18,
                       phase: Math.random() * 6, age: 0, landed: 0,
                       color: Math.random() < 0.5 ? C.leaf : C.butter });
       }
@@ -495,21 +495,140 @@
     ctx.globalAlpha = 1;
   }
 
+  // A taller tree with a round crown; a boy sits on top with his laptop.
+  var CANOPY = [[-20, -78, 22], [20, -80, 21], [0, -100, 26], [-6, -72, 20], [10, -70, 19]];
+
   function drawTree() {
     var ground = H - TRACK;
     var x = tree.x;
+    var sway = Math.sin(time * 0.8) * 1.5;
+
+    // trunk and a small branch
     ctx.fillStyle = C.peach;
-    ctx.globalAlpha = 0.9;
-    roundRect(x - 4, ground - 46, 8, 46, 3);
+    roundRect(x - 6, ground - 72, 12, 72, 4);
     ctx.fill();
-    ctx.globalAlpha = 1;
-    var sway = Math.sin(time * 0.8) * 2;
-    [[-14, -60, 18], [12, -62, 17], [0, -78, 20]].forEach(function (blob) {
+    outline(1);
+    ctx.strokeStyle = C.peach;
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x + 2, ground - 44);
+    ctx.lineTo(x + 18, ground - 58);
+    ctx.stroke();
+
+    // crown
+    CANOPY.forEach(function (blob) {
       dot(x + blob[0] + sway, ground + blob[1], blob[2], C.leaf);
     });
+    ctx.globalAlpha = 0.18;
+    dot(x - 8 + sway, ground - 106, 9, "#ffffff"); // a little light on the leaves
+    ctx.globalAlpha = 1;
+
+    drawBoy(x + sway, ground - 124);
+  }
+
+  // The boy on the treetop: sitting, legs dangling, laptop held on his lap,
+  // typing away. He blinks, and looks up when the phoenix flies past.
+  var boy = { blink: 3 };
+
+  function drawBoy(x, seatY) {
+    var skin = "#f2c9a5";
+    var hair = "#4a3a33";
+    var t = time;
+    var lookUp = phoenix.active && Math.abs(phoenix.x - x) < 160 ? 1 : 0;
+    boy.lookUp = (boy.lookUp || 0) + (lookUp - (boy.lookUp || 0)) * 0.08;
+    boy.blink -= 1 / 120;
+    if (boy.blink < -0.12) boy.blink = 2.5 + Math.random() * 3;
+
+    ctx.save();
+    ctx.translate(x, seatY);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // legs: thigh forward, shin dangling and swinging
+    var swing = Math.sin(t * 1.6) * 0.25;
+    [[-1, 0], [2, 0.6]].forEach(function (leg) {
+      var kneeX = 9 + leg[0], kneeY = 1;
+      var footX = kneeX + Math.sin(swing + leg[1]) * 6;
+      var footY = kneeY + 13;
+      ctx.strokeStyle = "#8aa6c9";
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.moveTo(-1, 0);
+      ctx.lineTo(kneeX, kneeY);
+      ctx.lineTo(footX, footY);
+      ctx.stroke();
+      dot(footX + 1.5, footY + 1, 2.6, C.ink);
+    });
+
+    // body
+    ctx.fillStyle = C.coral;
+    roundRect(-6, -17, 10, 18, 4);
+    ctx.fill();
+
+    // laptop resting on his lap, lid open towards him
+    var lidX = 17, lidTop = -20;
+    // soft screen glow on his face side (small, so it never looks like a disc)
+    ctx.globalAlpha = colors.dark ? 0.22 : 0.14;
+    dot(lidX - 3, -10, 6, C.butter);
+    ctx.globalAlpha = 1;
+    // keyboard base on his lap
+    ctx.fillStyle = C.lavender;
+    roundRect(1, -2.5, lidX + 1, 3.2, 1.2);
+    ctx.fill();
+    // lid, tilted back, with a bright screen facing him
     ctx.beginPath();
-    ctx.arc(x + sway, ground - 78, 20, 0, Math.PI * 2);
-    outline(1);
+    ctx.moveTo(lidX - 1, -1.5);
+    ctx.lineTo(lidX + 3, lidTop);
+    ctx.lineTo(lidX + 7.5, lidTop + 1);
+    ctx.lineTo(lidX + 3.5, -1.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = C.cream;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(lidX + 0.6, -4);
+    ctx.lineTo(lidX + 3.6, lidTop + 3);
+    ctx.stroke();
+
+    // arms reaching to the keyboard; hands bob while typing
+    var tapA = Math.sin(t * 15) > 0.3 ? -1.2 : 0;
+    var tapB = Math.sin(t * 15 + 2) > 0.3 ? -1.2 : 0;
+    ctx.strokeStyle = skin;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-1, -13); ctx.lineTo(6, -6); ctx.lineTo(8, -3.5 + tapA);
+    ctx.moveTo(1, -12); ctx.lineTo(9, -6); ctx.lineTo(11, -3.5 + tapB);
+    ctx.stroke();
+
+    // head (tilts up a little when the phoenix passes)
+    ctx.save();
+    ctx.translate(-1, -23);
+    ctx.rotate(0.18 - boy.lookUp * 0.45);
+    dot(0, 0, 6.5, skin);
+    ctx.fillStyle = hair;
+    ctx.beginPath();
+    ctx.arc(0, -1, 6.8, Math.PI * 0.95, Math.PI * 2.05);
+    ctx.lineTo(4, -2);
+    ctx.quadraticCurveTo(0, -3.5, -6.5, 0);
+    ctx.closePath();
+    ctx.fill();
+    // eye and smile, facing the laptop
+    if (boy.blink < 0) {
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(2.2, 0.5); ctx.lineTo(4.4, 0.5); ctx.stroke();
+    } else {
+      dot(3.3, 0.5, 1.1, C.ink);
+    }
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(3, 2.6, 1.6, 0.1 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
   }
 
   function drawLeaves() {
