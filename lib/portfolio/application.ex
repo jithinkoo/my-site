@@ -12,6 +12,7 @@ defmodule Portfolio.Application do
       Portfolio.Repo,
       {DNSCluster, query: Application.get_env(:portfolio, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Portfolio.PubSub},
+      Portfolio.RateLimiter,
       # Start a worker by calling: Portfolio.Worker.start_link(arg)
       # {Portfolio.Worker, arg},
       # Start to serve requests, typically the last entry

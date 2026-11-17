@@ -137,9 +137,19 @@ defmodule PortfolioWeb.ImagesTest do
     assert Layouts.caption_lines("Slow rivers, quiet sea — Jithin K") ==
              [{"Slow rivers, quiet sea", false}, {"— Jithin K", true}]
 
+    # lowercase name stuck to the hyphen, on the same line
+    assert Layouts.caption_lines("Everything taught me patience. -jithin") ==
+             [{"Everything taught me patience.", false}, {"— Jithin", true}]
+
+    # lowercase on its own line is capitalised too
+    assert Layouts.caption_lines("Quote\n-jithin k") == [{"Quote", false}, {"— Jithin K", true}]
+
     # ordinary hyphens are left alone
     assert Layouts.caption_lines("A well-known path - and more") ==
              [{"A well-known path - and more", false}]
+
+    assert Layouts.caption_lines("Born by slow rivers, settled by the sea.") ==
+             [{"Born by slow rivers, settled by the sea.", false}]
   end
 
   describe "background photo loop" do

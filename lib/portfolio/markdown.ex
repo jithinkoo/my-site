@@ -20,6 +20,24 @@ defmodule Portfolio.Markdown do
     --- / ***          section break
   """
 
+  @doc """
+  Markdown text -> plain text on one line: images dropped, links keep their
+  label, formatting marks removed. Used for "Read more" excerpts.
+  """
+  def to_plain(nil), do: ""
+
+  def to_plain(text) when is_binary(text) do
+    text
+    |> String.replace(~r/```.*?```/su, " ")
+    |> String.replace(~r/!\[[^\]]*\]\([^)]*\)/u, " ")
+    |> String.replace(~r/\[([^\]]+)\]\([^)]*\)/u, "\\1")
+    |> String.replace(~r/^\s{0,3}(\#{1,6}|>|[-*+]|\d{1,9}[.)])\s+/mu, "")
+    |> String.replace(~r/^\s{0,3}([-*_])(\s*\1){2,}\s*$/mu, " ")
+    |> String.replace(~r/(\*\*|\*|`)/u, "")
+    |> String.split()
+    |> Enum.join(" ")
+  end
+
   @doc "Markdown text -> HTML string (already escaped and safe to embed)."
   def to_html(nil), do: ""
 

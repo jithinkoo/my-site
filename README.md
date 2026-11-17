@@ -141,6 +141,34 @@ Admin → **Write a new post**. Posts use Markdown:
 
 Untick **Published** to keep a post as a private draft.
 
+## Comments
+
+Every published post has a comment form (name + comment). Comments appear
+straight away, as plain text. No email or IP address is stored. Bots are
+caught by a hidden field, and one visitor can post at most 3 comments in
+10 minutes. While logged in as admin, each comment shows a **Delete comment**
+button; Admin → Posts shows comment counts.
+
+## Gallery
+
+Admin → **Images & gallery**: tick **Show on the Gallery page** when
+uploading (and add a place), or edit any photo's caption, place and
+"In gallery" box later. The public **Gallery** page shows them as a grid;
+clicking a photo opens it large.
+
+## Getting found on Google
+
+The site already serves `/sitemap.xml` and `/robots.txt`, a canonical
+address on every page, link-preview tags and structured data.
+
+1. Open https://search.google.com/search-console and add your site as a
+   **URL prefix** (e.g. `https://jithin.onrender.com`).
+2. Choose the **HTML tag** method. Copy only the `content="..."` value.
+3. In Render → Environment add `GOOGLE_SITE_VERIFICATION` with that value,
+   save and wait for the redeploy, then click **Verify** in Search Console.
+4. In Search Console → **Sitemaps**, submit `sitemap.xml`.
+5. Optional: Bing Webmaster Tools can import your Search Console site.
+
 ## Photos and images
 
 - **Your photo:** Admin → **Profile** → Photo. It shows round on the home

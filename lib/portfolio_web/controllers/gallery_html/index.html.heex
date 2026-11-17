@@ -1,0 +1,32 @@
+<Layouts.app flash={@flash} profile={@profile} slides={@slides} active={:gallery}>
+  <header class="page-header">
+    <p class="eyebrow reveal">Gallery</p>
+    <h1 class="reveal reveal-2">Places &amp; moments</h1>
+    <p class="lede reveal reveal-3">Little windows into where I've been and what stayed with me.</p>
+  </header>
+
+  <p :if={@images == []} class="muted">The first photographs are on their way.</p>
+
+  <ul class="gallery-grid">
+    <li :for={image <- @images} class="gallery-item">
+      <a
+        href={Portfolio.Media.path(image)}
+        data-lightbox
+        data-caption={image.alt}
+        data-place={image.place}
+      >
+        <img src={Portfolio.Media.path(image)} alt={image.alt || image.place || ""} loading="lazy" />
+      </a>
+      <p :if={image.alt || image.place} class="gallery-caption">
+        <span :if={image.alt}>{image.alt}</span>
+        <span :if={image.place} class="gallery-place">{image.place}</span>
+      </p>
+    </li>
+  </ul>
+
+  <dialog class="lightbox" data-lightbox-dialog aria-label="Photo">
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="Close">×</button>
+    <img data-lightbox-img alt="" />
+    <p class="lightbox-caption" data-lightbox-caption></p>
+  </dialog>
+</Layouts.app>

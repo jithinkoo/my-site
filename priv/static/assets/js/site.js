@@ -35,6 +35,31 @@
     }, SLIDE_EVERY);
   }
 
+  // ---------- Gallery: click a photo to see it large ----------
+  // Without JavaScript the link simply opens the photo.
+  var dialog = document.querySelector("[data-lightbox-dialog]");
+  if (dialog && typeof dialog.showModal === "function") {
+    var bigImg = dialog.querySelector("[data-lightbox-img]");
+    var bigCaption = dialog.querySelector("[data-lightbox-caption]");
+    document.querySelectorAll("a[data-lightbox]").forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        bigImg.src = link.getAttribute("href");
+        bigImg.alt = link.dataset.caption || "";
+        var parts = [link.dataset.caption, link.dataset.place].filter(Boolean);
+        bigCaption.textContent = parts.join(" · ");
+        dialog.showModal();
+      });
+    });
+    dialog.querySelector("[data-lightbox-close]").addEventListener("click", function () {
+      dialog.close();
+    });
+    // click outside the photo closes it
+    dialog.addEventListener("click", function (e) {
+      if (e.target === dialog) dialog.close();
+    });
+  }
+
   // ---------- 3. Photo text ----------
   // Fit the photo text box to its longest wrapped line, so a right-aligned
   // "— Name" signature ends exactly where the quote ends. (CSS alone sizes

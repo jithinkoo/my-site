@@ -29,10 +29,14 @@ defmodule PortfolioWeb.Router do
     get "/about", PageController, :about
     get "/thoughts", PostController, :index
     get "/thoughts/:slug", PostController, :show
+    post "/thoughts/:slug/comments", PostController, :create_comment
+    get "/gallery", GalleryController, :index
   end
 
   scope "/", PortfolioWeb do
     get "/feed.xml", FeedController, :index
+    get "/sitemap.xml", SeoController, :sitemap
+    get "/robots.txt", SeoController, :robots
     get "/media/:id", MediaController, :show
     get "/health", HealthController, :show
   end
@@ -50,8 +54,9 @@ defmodule PortfolioWeb.Router do
 
     get "/", PostController, :index
     resources "/posts", PostController, except: [:index, :show]
-    resources "/images", ImageController, only: [:index, :create, :delete]
+    resources "/images", ImageController, only: [:index, :create, :update, :delete]
     put "/images/:id/slideshow", ImageController, :slideshow
+    delete "/comments/:id", CommentController, :delete
     get "/profile", ProfileController, :edit
     put "/profile", ProfileController, :update
   end
@@ -62,6 +67,7 @@ defmodule PortfolioWeb.Router do
     conn
     |> Plug.Conn.assign(:profile, profile)
     |> Plug.Conn.assign(:slides, Portfolio.Media.slideshow_ids(profile.photo_image_id))
+    |> Plug.Conn.assign(:admin?, PortfolioWeb.AdminAuth.admin?(conn))
   end
 
   defp put_noindex(conn, _opts) do

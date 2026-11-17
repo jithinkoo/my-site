@@ -3,7 +3,7 @@
     <h1>Edit post</h1>
     <a :if={@post.published} href={~p"/thoughts/#{@post.slug}"} target="_blank">View on site ↗</a>
   </div>
-  <.post_form form={@form} action={~p"/admin/posts/#{@post}"} method="put" />
+  <.post_form form={@form} action={~p"/admin/posts/#{@post}"} method="put" cover_id={@post.cover_image_id} />
 
   <details class="danger-zone">
     <summary>Delete this post</summary>

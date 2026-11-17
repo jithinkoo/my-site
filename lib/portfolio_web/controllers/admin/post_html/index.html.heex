@@ -23,7 +23,14 @@
             {if post.published, do: "Live", else: "Draft"}
           </span>
         </td>
-        <td class="nowrap">{short_date(post.published_at || post.inserted_at)}</td>
+        <td class="nowrap">
+          {short_date(post.published_at || post.inserted_at)}
+          <span :if={Map.get(@comment_counts, post.id, 0) > 0} class="muted">
+            · <a :if={post.published} href={~p"/thoughts/#{post.slug}" <> "#comments"}>
+              {Map.get(@comment_counts, post.id)} 💬
+            </a>
+          </span>
+        </td>
         <td class="nowrap right">
           <a :if={post.published} href={~p"/thoughts/#{post.slug}"} target="_blank">View ↗</a>
         </td>

@@ -1,6 +1,6 @@
 <Layouts.admin flash={@flash}>
   <div class="admin-head">
-    <h1>Images</h1>
+    <h1>Images &amp; gallery</h1>
   </div>
 
   <.form for={%{}} as={:image} action={~p"/admin/images"} multipart class="editor upload-box">
@@ -31,6 +31,16 @@
       </label>
       <p class="hint">Background photos fade one into the next behind your page, after your profile photo.</p>
     </div>
+    <div class="field field-check">
+      <label>
+        <input type="checkbox" name="image[gallery]" value="true" />
+        Show on the Gallery page
+      </label>
+    </div>
+    <div class="field">
+      <label for="image_place">Place (optional, for the Gallery)</label>
+      <input type="text" id="image_place" name="image[place]" maxlength="120" placeholder="e.g. Thanjavur, Tamil Nadu" />
+    </div>
     <div class="actions">
       <button type="submit" class="button">Upload</button>
     </div>
@@ -50,7 +60,19 @@
         <p class="hint">
           {kb(image.byte_size)} · {short_date(image.inserted_at)}
           <span :if={image.in_slideshow} class="badge badge-live">In background</span>
+          <span :if={image.in_gallery} class="badge badge-live">In gallery</span>
         </p>
+        <.form for={%{}} as={:image} action={~p"/admin/images/#{image.id}"} method="put" class="image-details">
+          <label class="sr-only" for={"alt-#{image.id}"}>Caption</label>
+          <input id={"alt-#{image.id}"} type="text" name="image[alt]" value={image.alt} maxlength="255" placeholder="Caption" />
+          <label class="sr-only" for={"place-#{image.id}"}>Place</label>
+          <input id={"place-#{image.id}"} type="text" name="image[place]" value={image.place} maxlength="120" placeholder="Place" />
+          <input type="hidden" name="image[in_gallery]" value="false" />
+          <label class="check-inline">
+            <input type="checkbox" name="image[in_gallery]" value="true" checked={image.in_gallery} /> In gallery
+          </label>
+          <button type="submit" class="link-button save-link">Save</button>
+        </.form>
         <label class="sr-only" for={"md-#{image.id}"}>Line to paste into a post</label>
         <input id={"md-#{image.id}"} type="text" readonly value={markdown_line(image)} class="copy-field" onclick="this.select()" />
         <.form

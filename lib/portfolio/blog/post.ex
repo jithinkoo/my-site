@@ -11,13 +11,16 @@ defmodule Portfolio.Blog.Post do
     field :body, :string
     field :published, :boolean, default: false
     field :published_at, :utc_datetime
+    field :cover_image_id, :id
+    has_many :comments, Portfolio.Blog.Comment
 
     timestamps(type: :utc_datetime)
   end
 
   def changeset(post, attrs) do
     post
-    |> cast(attrs, [:title, :slug, :summary, :body, :published])
+    |> cast(attrs, [:title, :slug, :summary, :body, :published, :cover_image_id])
+    |> foreign_key_constraint(:cover_image_id)
     |> validate_required([:title, :body])
     |> validate_length(:title, max: 200)
     |> validate_length(:summary, max: 400)

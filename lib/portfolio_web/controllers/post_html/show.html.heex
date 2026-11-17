@@ -9,6 +9,10 @@
       <p :if={@post.summary} class="lede">{@post.summary}</p>
     </header>
 
+    <figure :if={@post.cover_image_id} class="post-cover">
+      <img src={Portfolio.Media.path(@post.cover_image_id)} alt="" />
+    </figure>
+
     <div class="prose">{markdown(@post.body)}</div>
 
     <footer class="post-footer">
@@ -16,4 +20,63 @@
       <p><a href={~p"/thoughts"}>← All thoughts</a></p>
     </footer>
   </article>
+
+  <section id="comments" class="comments" aria-labelledby="comments-title">
+    <h2 id="comments-title" class="section-title">
+      {case length(@comments) do
+        0 -> "Comments"
+        1 -> "1 comment"
+        n -> "#{n} comments"
+      end}
+    </h2>
+
+    <p :if={@comments == []} class="muted">No comments yet. Be the first to share a thought.</p>
+
+    <ol class="comment-list">
+      <li :for={comment <- @comments} id={"comment-#{comment.id}"} class="comment">
+        <p class="comment-head">
+          <span class="comment-name">{comment.name}</span>
+          <time datetime={DateTime.to_iso8601(comment.inserted_at)}>{comment_time(comment.inserted_at)}</time>
+        </p>
+        <p class="comment-body">{comment.body}</p>
+        <.form
+          :if={@admin?}
+          for={%{}}
+          action={~p"/admin/comments/#{comment.id}"}
+          method="delete"
+          class="inline-form"
+        >
+          <button
+            type="submit"
+            class="link-button danger-link"
+            onclick="return confirm('Delete this comment?')"
+          >
+            Delete comment
+          </button>
+        </.form>
+      </li>
+    </ol>
+
+    <.form for={@comment_form} action={~p"/thoughts/#{@post.slug}/comments"} class="comment-form">
+      <h3>Leave a comment</h3>
+      <.input field={@comment_form[:name]} label="Your name" maxlength="60" required />
+      <.input
+        field={@comment_form[:body]}
+        type="textarea"
+        rows="4"
+        label="Your comment"
+        maxlength="1000"
+        required
+      />
+      <%!-- Spam trap: hidden from people, filled in by bots. --%>
+      <div class="hp" aria-hidden="true">
+        <label for="comment_website">Website</label>
+        <input type="text" id="comment_website" name="comment[website]" tabindex="-1" autocomplete="off" />
+      </div>
+      <p class="hint">Your comment and name appear publicly under this post. Please be kind.</p>
+      <div class="actions">
+        <button type="submit" class="button">Post comment</button>
+      </div>
+    </.form>
+  </section>
 </Layouts.app>

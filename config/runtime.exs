@@ -105,6 +105,12 @@ if config_env() == :prod do
 
   config :portfolio, admin_password: admin_password
 
+  # Optional: the code Google Search Console gives you to prove the site is
+  # yours ("HTML tag" method). Paste only the content="..." value.
+  if verification = System.get_env("GOOGLE_SITE_VERIFICATION") do
+    config :portfolio, google_site_verification: String.trim(verification)
+  end
+
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
   # want to use a different value for prod and you most likely don't want

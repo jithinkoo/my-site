@@ -6,15 +6,36 @@
     <meta name="csrf-token" content={get_csrf_token()} />
     <title>{page_title(assigns)}</title>
     <meta name="description" content={assigns[:meta_description] || @profile.headline} />
+    <meta name="author" content={@profile.name} />
+    <link :if={!assigns[:noindex]} rel="canonical" href={PortfolioWeb.Seo.canonical_url(@conn)} />
+    <meta property="og:site_name" content={@profile.name} />
     <meta property="og:title" content={page_title(assigns)} />
     <meta property="og:description" content={assigns[:meta_description] || @profile.headline} />
     <meta property="og:type" content={if assigns[:post], do: "article", else: "website"} />
+    <meta property="og:url" content={PortfolioWeb.Seo.canonical_url(@conn)} />
     <meta
-      :if={@profile.photo_image_id}
+      :if={og_image_id(assigns)}
       property="og:image"
-      content={url(~p"/media/#{@profile.photo_image_id}")}
+      content={PortfolioWeb.Seo.absolute(Portfolio.Media.path(og_image_id(assigns)))}
+    />
+    <meta
+      name="twitter:card"
+      content={if assigns[:meta_image_id], do: "summary_large_image", else: "summary"}
+    />
+    <meta
+      :if={assigns[:post] && assigns[:post].published_at}
+      property="article:published_time"
+      content={DateTime.to_iso8601(assigns[:post].published_at)}
+    />
+    <meta
+      :if={site_verification()}
+      name="google-site-verification"
+      content={site_verification()}
     />
     <meta :if={assigns[:noindex]} name="robots" content="noindex, nofollow" />
+    <script :if={!assigns[:noindex]} type="application/ld+json">
+      <%= Phoenix.HTML.raw(PortfolioWeb.Seo.json_ld(assigns)) %>
+    </script>
     <meta name="color-scheme" content="light dark" />
     <link rel="alternate" type="application/rss+xml" title={"#{@profile.name}: Thoughts"} href={~p"/feed.xml"} />
     <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />

@@ -4,6 +4,11 @@ defmodule PortfolioWeb.Layouts do
 
   embed_templates "layouts/*"
 
+  @doc "Image for link previews: the page's own (post cover), else the profile photo."
+  def og_image_id(assigns), do: assigns[:meta_image_id] || assigns.profile.photo_image_id
+
+  def site_verification, do: Application.get_env(:portfolio, :google_site_verification)
+
   def page_title(assigns) do
     name = assigns.profile.name
 
@@ -31,8 +36,9 @@ defmodule PortfolioWeb.Layouts do
           <div class="wrap header-row">
             <a href={~p"/"} class="brand">{@profile.name}</a>
             <nav aria-label="Main">
-              <a href={~p"/thoughts"} aria-current={@active == :thoughts && "page"}>Thoughts</a>
               <a href={~p"/about"} aria-current={@active == :about && "page"}>About</a>
+              <a href={~p"/thoughts"} aria-current={@active == :thoughts && "page"}>Thoughts</a>
+              <a href={~p"/gallery"} aria-current={@active == :gallery && "page"}>Gallery</a>
               <.theme_toggle />
             </nav>
           </div>
@@ -106,28 +112,47 @@ defmodule PortfolioWeb.Layouts do
     |> split_trailing_signature()
     |> Enum.map(fn line ->
       case Regex.run(~r/^[-–—]+\s*(.+)$/u, line) do
-        [_, name] -> {"— " <> name, true}
+        [_, name] -> {"— " <> capitalize_name(name), true}
         nil -> {line, false}
       end
     end)
   end
 
   # "Quote here. -Jithin" typed on one line: move the name to its own line.
-  # Only a short capitalised name after " -", " –" or " —" at the very end
-  # counts, so ordinary hyphens inside the text are left alone.
+  # A name of up to three words at the very end counts when it follows
+  #   - a hyphen stuck to it:        "... patience. -jithin"
+  #   - an en/em dash:               "... patience. — Jithin"
+  #   - a spaced hyphen + capital:   "... patience. - Jithin"
+  # so ordinary dashes inside a sentence ("a path - and more") are left alone.
+  @name ~S"\p{L}[\p{L}.']*(?:\s\p{L}[\p{L}.']*){0,2}"
+  @trailing_signature [
+    Regex.compile!(~S"^(.*\S)\s+-+(" <> @name <> ")$", "u"),
+    Regex.compile!(~S"^(.*\S)\s+[–—]+\s*(" <> @name <> ")$", "u"),
+    Regex.compile!(~S"^(.*\S)\s+-+\s+(\p{Lu}[\p{L}.']*(?:\s\p{L}[\p{L}.']*){0,2})$", "u")
+  ]
+
   defp split_trailing_signature(lines) do
     already_signed? = Enum.any?(lines, &Regex.match?(~r/^[-–—]/u, &1))
+    last = List.last(lines)
 
-    case {already_signed?, List.last(lines)} do
-      {false, last} when is_binary(last) ->
-        case Regex.run(~r/^(.*\S)\s+[-–—]+\s*(\p{Lu}[\p{L}.' ]{0,40})$/u, last) do
-          [_, quote, name] -> List.replace_at(lines, -1, quote) ++ ["— " <> String.trim(name)]
-          nil -> lines
-        end
+    match =
+      if not already_signed? and is_binary(last),
+        do: Enum.find_value(@trailing_signature, &Regex.run(&1, last))
 
-      _ ->
-        lines
+    case match do
+      [_, quote, name] -> List.replace_at(lines, -1, quote) ++ ["— " <> capitalize_name(name)]
+      _ -> lines
     end
+  end
+
+  # "jithin k" -> "Jithin K"
+  defp capitalize_name(name) do
+    name
+    |> String.split(~r/\s+/u, trim: true)
+    |> Enum.map_join(" ", fn word ->
+      {first, rest} = String.split_at(word, 1)
+      String.upcase(first) <> rest
+    end)
   end
 
   @doc "Admin page frame."
@@ -141,7 +166,7 @@ defmodule PortfolioWeb.Layouts do
         <a href={~p"/admin"} class="brand">Admin</a>
         <nav aria-label="Admin">
           <a href={~p"/admin"}>Posts</a>
-          <a href={~p"/admin/images"}>Images</a>
+          <a href={~p"/admin/images"}>Images &amp; gallery</a>
           <a href={~p"/admin/profile"}>Profile</a>
           <a href={~p"/"} target="_blank">View site ↗</a>
           <.form for={%{}} action={~p"/admin/logout"} method="delete" class="inline-form">

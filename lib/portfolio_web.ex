@@ -17,7 +17,7 @@ defmodule PortfolioWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico favicon.svg robots.txt)
+  def static_paths, do: ~w(assets fonts images favicon.ico favicon.svg)
 
   def router do
     quote do
@@ -41,7 +41,7 @@ defmodule PortfolioWeb do
       use Phoenix.Controller, formats: [:html, :json]
 
       import Plug.Conn
-      import Phoenix.Component, only: [to_form: 1]
+      import Phoenix.Component, only: [to_form: 1, to_form: 2]
 
       unquote(verified_routes())
     end

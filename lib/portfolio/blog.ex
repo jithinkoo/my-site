@@ -37,7 +37,63 @@ defmodule Portfolio.Blog do
 
   def delete_post(%Post{} = post), do: Repo.delete(post)
 
+  ## Comments
+
+  alias Portfolio.Blog.Comment
+
+  def list_comments(%Post{id: post_id}) do
+    Comment
+    |> where(post_id: ^post_id)
+    |> order_by(asc: :inserted_at, asc: :id)
+    |> Repo.all()
+  end
+
+  def comment_counts do
+    Comment
+    |> group_by(:post_id)
+    |> select([c], {c.post_id, count(c.id)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  def change_comment(attrs \\ %{}), do: Comment.changeset(%Comment{}, attrs)
+
+  def create_comment(%Post{published: true} = post, attrs) do
+    %Comment{post_id: post.id}
+    |> Comment.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def delete_comment(id) do
+    case Repo.get(Comment, id) do
+      nil -> {:error, :not_found}
+      comment -> Repo.delete(comment)
+    end
+  end
+
   ## Helpers
+
+  @doc """
+  The opening of a post for lists: the summary if there is one, otherwise
+  the first ~#{220} characters of the text, cut at a word and ending in "…".
+  """
+  def excerpt(%Post{summary: summary}) when is_binary(summary) and summary != "" do
+    summary
+  end
+
+  def excerpt(%Post{body: body}) do
+    text = Portfolio.Markdown.to_plain(body)
+
+    if String.length(text) <= 220 do
+      text
+    else
+      text
+      |> String.slice(0, 220)
+      |> String.replace(~r/\s+\S*$/u, "")
+      |> String.trim_trailing(".,;:!?—–- ")
+      |> Kernel.<>("…")
+    end
+  end
 
   @doc "Minutes to read at ~200 words per minute, at least 1."
   def reading_minutes(%Post{body: body}) do

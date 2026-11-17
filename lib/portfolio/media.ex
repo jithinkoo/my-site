@@ -11,12 +11,31 @@ defmodule Portfolio.Media do
   alias Portfolio.Repo
   alias Portfolio.Media.Image
 
+  @list_fields [:id, :filename, :content_type, :byte_size, :alt, :place, :in_slideshow, :in_gallery, :inserted_at]
+
   @doc "All images, newest first, without loading their bytes."
   def list_images do
     Image
-    |> select([i], struct(i, [:id, :filename, :content_type, :byte_size, :alt, :in_slideshow, :inserted_at]))
+    |> select([i], struct(i, @list_fields))
     |> order_by(desc: :id)
     |> Repo.all()
+  end
+
+  @doc "Images shown on the public Gallery page, newest first."
+  def list_gallery do
+    Image
+    |> where(in_gallery: true)
+    |> select([i], struct(i, @list_fields))
+    |> order_by(desc: :id)
+    |> Repo.all()
+  end
+
+  @doc "Updates caption (alt), place and the gallery flag."
+  def update_details(id, attrs) do
+    case Repo.get(Image, id) do
+      nil -> {:error, :not_found}
+      image -> image |> Image.details_changeset(attrs) |> Repo.update()
+    end
   end
 
   @doc """
