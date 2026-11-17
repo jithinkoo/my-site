@@ -13,6 +13,7 @@ defmodule Portfolio.Media.Image do
     field :byte_size, :integer
     field :data, :binary, redact: true
     field :alt, :string
+    field :in_slideshow, :boolean, default: false
 
     timestamps(type: :utc_datetime)
   end

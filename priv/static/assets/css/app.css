@@ -881,6 +881,32 @@ nav a[aria-current="page"] {
   padding: 0.45rem 0.5rem;
 }
 
+.bg-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.bg-thumbs img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--rule);
+}
+
+.slideshow-toggle {
+  margin-right: 1rem;
+}
+
+.slideshow-toggle .link-button {
+  padding: 0;
+  font-size: 0.88rem;
+  color: var(--accent);
+}
+
 .danger-link {
   color: var(--danger);
   font-size: 0.88rem;
@@ -942,16 +968,14 @@ nav a[aria-current="page"] {
   background-position: top;
 }
 
-.photo-panel img {
+/* The stack holds one or more photos. Faded/lit look and the dissolve
+   into the page apply to the stack as a whole... */
+.photo-stack {
   -webkit-mask-image: linear-gradient(to right, #000 0%, #000 38%, rgb(0 0 0 / 55%) 58%, transparent 100%);
   mask-image: linear-gradient(to right, #000 0%, #000 38%, rgb(0 0 0 / 55%) 58%, transparent 100%);
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 30%;
-  opacity: 0.3;
+  opacity: var(--photo-dim, 0.3);
   filter: grayscale(0.9) contrast(0.9) brightness(1.08);
   transform: scale(1.06);
   transition:
@@ -960,17 +984,34 @@ nav a[aria-current="page"] {
     transform 1.4s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+/* ...while each photo inside cross-fades with the next (site.js moves
+   .is-active along the loop). */
+.photo-stack img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  opacity: 0;
+  transition: opacity 2.6s ease-in-out;
+}
+
+.photo-stack img.is-active {
+  opacity: 1;
+}
+
 /* Lit on mouse hover (real mice only: phones keep :hover stuck after a
    tap), on keyboard focus, or when tapped (.is-lit, toggled in site.js). */
-.photo-panel:focus-visible img,
-.photo-panel.is-lit img {
+.photo-panel:focus-visible .photo-stack,
+.photo-panel.is-lit .photo-stack {
   opacity: 1;
   filter: none;
   transform: scale(1);
 }
 
 @media (hover: hover) {
-  .photo-panel:hover img {
+  .photo-panel:hover .photo-stack {
     opacity: 1;
     filter: none;
     transform: scale(1);
@@ -985,8 +1026,10 @@ nav a[aria-current="page"] {
 .photo-caption {
   position: absolute;
   left: clamp(1.25rem, 4vw, 3rem);
-  /* keep the caption on the visible part, left of the content column */
-  right: calc(22vw + 2rem);
+  /* Shrink to the text so a right-aligned signature ends where the quote
+     ends; stay on the visible part, left of the content column. */
+  width: max-content;
+  max-width: calc(40vw - clamp(1.25rem, 4vw, 3rem) - 2rem);
   bottom: clamp(1.5rem, 6vh, 4rem);
   z-index: 1;
   margin: 0;
@@ -995,7 +1038,7 @@ nav a[aria-current="page"] {
   font-size: clamp(1.2rem, 2.1vw, 1.9rem);
   line-height: 1.35;
   color: var(--text);
-  text-wrap: balance;
+  text-wrap: pretty;
   transition: color 0.7s ease, text-shadow 0.7s ease;
 }
 
@@ -1004,6 +1047,7 @@ nav a[aria-current="page"] {
 }
 
 .photo-signature {
+  text-align: right;
   margin-top: 0.9em;
   font-family: var(--sans);
   font-style: normal;
@@ -1027,13 +1071,19 @@ nav a[aria-current="page"] {
   text-shadow: 0 1px 2px rgb(0 0 0 / 55%), 0 4px 24px rgb(0 0 0 / 45%);
 }
 
-:root[data-theme="dark"] .photo-panel img {
-  opacity: 0.22;
+/* Faded strength per theme; the lit states above set opacity: 1 directly,
+   so hover/tap always wins. */
+:root {
+  --photo-dim: 0.3;
+}
+
+:root[data-theme="dark"] {
+  --photo-dim: 0.22;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .photo-panel img {
-    opacity: 0.22;
+  :root:not([data-theme="light"]) {
+    --photo-dim: 0.22;
   }
 }
 
@@ -1104,8 +1154,20 @@ nav a[aria-current="page"] {
   .reveal-4 { animation-delay: 0.24s; }
   .reveal-5 { animation-delay: 0.32s; }
 
-  .photo-panel img {
+  .photo-stack {
     animation: develop 1.8s ease-out backwards;
+  }
+
+  /* A slow drift on the photo that's showing, so the loop feels alive. */
+  .photo-stack img {
+    transform: scale(1);
+    transition:
+      opacity 2.6s ease-in-out,
+      transform 9s ease-out;
+  }
+
+  .photo-stack img.is-active {
+    transform: scale(1.04);
   }
 
   .post-link h3 {
@@ -1142,7 +1204,7 @@ nav a[aria-current="page"] {
   }
 
   /* On narrow screens the photo dissolves downwards into the page. */
-  .photo-panel img {
+  .photo-stack {
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
     mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%);
   }
@@ -1153,7 +1215,7 @@ nav a[aria-current="page"] {
   }
 
   .photo-caption {
-    right: clamp(1.25rem, 4vw, 3rem);
+    max-width: calc(100% - 2 * clamp(1.25rem, 4vw, 3rem));
     bottom: 3.5rem;
     font-size: 1.15rem;
   }

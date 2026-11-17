@@ -1,4 +1,4 @@
-<Layouts.app flash={@flash} profile={@profile}>
+<Layouts.app flash={@flash} profile={@profile} slides={@slides}>
   <section class="hero">
     <p class="eyebrow reveal">{@profile.location}</p>
     <h1 class="reveal reveal-2">{@profile.name}</h1>
@@ -14,11 +14,13 @@
     <div class="playground-head">
       <h2 id="playground-title" class="section-title-inline">Little things in motion</h2>
       <p class="hint playground-hint">
-        <span class="hint-mouse">Move your mouse to push the balls. Click to drop a new one.</span>
-        <span class="hint-touch">Drag to push the balls. Tap to drop a new one.</span>
+        <span class="hint-mouse">Move your mouse to push things around. Click to drop something new.</span>
+        <span class="hint-touch">Drag to push things around. Tap to drop something new.</span>
       </p>
     </div>
     <canvas class="physics" data-physics aria-hidden="true"></canvas>
+    <script defer src={~p"/assets/js/scene.js"}>
+    </script>
   </section>
 
   <section class="section" aria-labelledby="latest">

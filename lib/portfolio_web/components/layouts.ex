@@ -16,14 +16,15 @@ defmodule PortfolioWeb.Layouts do
   @doc "Public page frame: header, content, footer."
   attr :flash, :map, required: true
   attr :profile, :map, required: true
+  attr :slides, :list, default: [], doc: "image ids for the background photo loop"
   attr :active, :atom, default: nil
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
     <a class="skip" href="#main">Skip to content</a>
-    <div class={["shell", @profile.photo_image_id && "has-photo"]}>
-      <.photo_panel :if={@profile.photo_image_id} profile={@profile} />
+    <div class={["shell", @slides != [] && "has-photo"]}>
+      <.photo_panel :if={@slides != []} profile={@profile} slides={@slides} />
 
       <div class="content-col">
         <header class="site-header">
@@ -62,18 +63,25 @@ defmodule PortfolioWeb.Layouts do
 
   @doc """
   Full-height photo on the left (a banner on phones). Quiet and faded by
-  default; comes alive on hover, keyboard focus, or tap.
+  default; comes alive on hover, keyboard focus, or tap. With more than one
+  photo, they cross-fade in a loop (site.js).
   """
   attr :profile, :map, required: true
+  attr :slides, :list, required: true
 
   def photo_panel(assigns) do
     ~H"""
     <figure class="photo-panel" tabindex="0" data-photo-panel>
-      <img
-        src={Portfolio.Media.path(@profile.photo_image_id)}
-        alt={"Photo of #{@profile.name}"}
-        fetchpriority="high"
-      />
+      <div class="photo-stack">
+        <img
+          :for={{id, i} <- Enum.with_index(@slides)}
+          src={Portfolio.Media.path(id)}
+          alt={if i == 0, do: "Photo of #{@profile.name}", else: ""}
+          class={i == 0 && "is-active"}
+          fetchpriority={if i == 0, do: "high", else: "low"}
+          decoding="async"
+        />
+      </div>
       <figcaption :if={@profile.photo_caption not in [nil, ""]} class="photo-caption">
         <span
           :for={{line, signature?} <- caption_lines(@profile.photo_caption)}

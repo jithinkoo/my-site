@@ -108,6 +108,7 @@ defmodule PortfolioWeb.ImagesTest do
     home = build_conn() |> get(~p"/") |> html_response(200)
     assert home =~ "data-physics"
     assert home =~ "/assets/js/site.js"
+    assert home =~ "/assets/js/scene.js"
   end
 
   test "a dash line in the photo text becomes a signature", %{conn: conn} do
@@ -128,6 +129,108 @@ defmodule PortfolioWeb.ImagesTest do
     assert Layouts.caption_lines("One line") == [{"One line", false}]
     assert Layouts.caption_lines("Quote\n\n— Jithin") == [{"Quote", false}, {"— Jithin", true}]
     assert Layouts.caption_lines("Quote\n--  Jithin ") == [{"Quote", false}, {"— Jithin", true}]
+  end
+
+  describe "background photo loop" do
+    test "profile photo first, then marked images, each as a stacked photo", %{conn: conn} do
+      {:ok, a} = Media.create_from_upload(upload(@png, "a.png"))
+      {:ok, b} = Media.create_from_upload(upload(@png, "b.png"))
+      {:ok, _not_marked} = Media.create_from_upload(upload(@png, "c.png"))
+      :ok = Media.set_slideshow(b.id, true)
+      :ok = Media.set_slideshow(a.id, true)
+
+      conn = log_in(conn)
+      put(conn, ~p"/admin/profile", profile: %{name: "J", photo: upload(@png, "me.png")})
+      photo = Profiles.get_profile().photo_image_id
+
+      assert Media.slideshow_ids(photo) == [photo, a.id, b.id]
+
+      html = build_conn() |> get(~p"/") |> html_response(200)
+      srcs = Regex.scan(~r{<img[^>]*src="/media/(\d+)"[^>]*>}, html) |> Enum.map(&String.to_integer(Enum.at(&1, 1)))
+      assert srcs == [photo, a.id, b.id]
+      # Only the first starts visible.
+      assert [_first_active] = Regex.scan(~r{<img[^>]*class="is-active"}, html)
+    end
+
+    test "slideshow images alone still show the panel (no profile photo)" do
+      {:ok, a} = Media.create_from_upload(upload(@png, "a.png"))
+      :ok = Media.set_slideshow(a.id, true)
+      html = build_conn() |> get(~p"/about") |> html_response(200)
+      assert html =~ ~s(class="photo-panel")
+      assert html =~ ~s(src="/media/#{a.id}")
+    end
+
+    test "add and remove from the loop on the Images page", %{conn: conn} do
+      {:ok, a} = Media.create_from_upload(upload(@png, "a.png"))
+      conn = log_in(conn)
+
+      conn = put(conn, ~p"/admin/images/#{a.id}/slideshow", in_slideshow: "true")
+      assert redirected_to(conn) == ~p"/admin/images"
+      assert Media.slideshow_ids(nil) == [a.id]
+      assert conn |> recycle() |> get(~p"/admin/images") |> html_response(200) =~ "Remove from background"
+
+      put(recycle(conn), ~p"/admin/images/#{a.id}/slideshow", in_slideshow: "false")
+      assert Media.slideshow_ids(nil) == []
+    end
+
+    test "upload straight into the loop", %{conn: conn} do
+      conn = log_in(conn)
+      post(conn, ~p"/admin/images", image: %{file: upload(@png, "x.png"), slideshow: "true"})
+      assert [%{in_slideshow: true}] = Media.list_images()
+    end
+
+    test "several background photos at once from the Profile page", %{conn: conn} do
+      conn = log_in(conn)
+
+      conn =
+        put(conn, ~p"/admin/profile",
+          profile: %{
+            name: "J",
+            photo: upload(@png, "me.png"),
+            background_photos: [upload(@png, "b1.png"), upload(@png, "b2.png"), upload(@png, "b3.png")]
+          }
+        )
+
+      assert redirected_to(conn) == ~p"/admin/profile"
+      photo = Profiles.get_profile().photo_image_id
+      ids = Media.slideshow_ids(photo)
+      assert length(ids) == 4
+      assert hd(ids) == photo
+
+      edit = conn |> recycle() |> get(~p"/admin/profile") |> html_response(200)
+      assert edit =~ "3 background photos added to the loop."
+      assert length(Regex.scan(~r{class="bg-thumbs"}, edit)) == 1
+    end
+
+    test "a bad file among background photos is reported", %{conn: conn} do
+      conn = log_in(conn)
+
+      conn =
+        put(conn, ~p"/admin/profile",
+          profile: %{background_photos: [upload(@png, "ok.png"), upload("nope", "bad.png")]}
+        )
+
+      assert html_response(conn, 422) =~ "bad.png: Only JPEG"
+    end
+
+    test "several images at once on the Images page", %{conn: conn} do
+      conn = log_in(conn)
+
+      conn =
+        post(conn, ~p"/admin/images",
+          image: %{files: [upload(@png, "a.png"), upload(@png, "b.png")], slideshow: "true"}
+        )
+
+      assert redirected_to(conn) == ~p"/admin/images"
+      assert length(Media.slideshow_ids(nil)) == 2
+    end
+
+    test "toggling the loop needs a login", %{conn: conn} do
+      {:ok, a} = Media.create_from_upload(upload(@png, "a.png"))
+      conn = put(conn, ~p"/admin/images/#{a.id}/slideshow", in_slideshow: "true")
+      assert redirected_to(conn) == ~p"/admin/login"
+      assert Media.slideshow_ids(nil) == []
+    end
   end
 
   test "no photo means no panel and a single-column page", %{conn: conn} do

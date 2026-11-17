@@ -14,9 +14,33 @@ defmodule Portfolio.Media do
   @doc "All images, newest first, without loading their bytes."
   def list_images do
     Image
-    |> select([i], struct(i, [:id, :filename, :content_type, :byte_size, :alt, :inserted_at]))
+    |> select([i], struct(i, [:id, :filename, :content_type, :byte_size, :alt, :in_slideshow, :inserted_at]))
     |> order_by(desc: :id)
     |> Repo.all()
+  end
+
+  @doc """
+  Image ids for the background photo loop: the profile photo first, then
+  every image marked for the slideshow, oldest first.
+  """
+  def slideshow_ids(profile_photo_id) do
+    marked =
+      Image
+      |> where(in_slideshow: true)
+      |> order_by(asc: :id)
+      |> select([i], i.id)
+      |> Repo.all()
+
+    Enum.uniq(Enum.reject([profile_photo_id | marked], &is_nil/1))
+  end
+
+  def set_slideshow(id, value) when is_boolean(value) do
+    {count, _} =
+      Image
+      |> where(id: ^id)
+      |> Repo.update_all(set: [in_slideshow: value, updated_at: DateTime.utc_now(:second)])
+
+    if count == 1, do: :ok, else: {:error, :not_found}
   end
 
   def get_image(id), do: Repo.get(Image, id)

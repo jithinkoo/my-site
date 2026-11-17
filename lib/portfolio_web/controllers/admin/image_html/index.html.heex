@@ -5,23 +5,31 @@
 
   <.form for={%{}} as={:image} action={~p"/admin/images"} multipart class="editor upload-box">
     <div class="field">
-      <label for="image_file">Choose an image</label>
+      <label for="image_file">Choose one or more images</label>
       <input
         type="file"
         id="image_file"
-        name="image[file]"
+        name="image[files][]"
         accept="image/jpeg,image/png,image/webp,image/gif"
+        multiple
         data-resize
         required
       />
       <p class="hint" data-resize-note>
-        JPEG, PNG, WebP or GIF, up to 5 MB. Large photos are shrunk automatically before upload.
+        JPEG, PNG, WebP or GIF, up to 5 MB each. Large photos are shrunk automatically before upload.
       </p>
     </div>
     <div class="field">
       <label for="image_alt">Description (optional)</label>
       <input type="text" id="image_alt" name="image[alt]" placeholder="e.g. Sunrise at Marina Beach" />
       <p class="hint">Read aloud by screen readers and shown if the image can't load.</p>
+    </div>
+    <div class="field field-check">
+      <label>
+        <input type="checkbox" name="image[slideshow]" value="true" />
+        Also show in the background photo loop
+      </label>
+      <p class="hint">Background photos fade one into the next behind your page, after your profile photo.</p>
     </div>
     <div class="actions">
       <button type="submit" class="button">Upload</button>
@@ -39,9 +47,23 @@
       <img src={Portfolio.Media.path(image)} alt={image.alt || ""} loading="lazy" />
       <div class="image-meta">
         <p class="image-name">{image.filename}</p>
-        <p class="hint">{kb(image.byte_size)} · {short_date(image.inserted_at)}</p>
+        <p class="hint">
+          {kb(image.byte_size)} · {short_date(image.inserted_at)}
+          <span :if={image.in_slideshow} class="badge badge-live">In background</span>
+        </p>
         <label class="sr-only" for={"md-#{image.id}"}>Line to paste into a post</label>
         <input id={"md-#{image.id}"} type="text" readonly value={markdown_line(image)} class="copy-field" onclick="this.select()" />
+        <.form
+          for={%{}}
+          action={~p"/admin/images/#{image.id}/slideshow"}
+          method="put"
+          class="inline-form slideshow-toggle"
+        >
+          <input type="hidden" name="in_slideshow" value={if image.in_slideshow, do: "false", else: "true"} />
+          <button type="submit" class="link-button">
+            {if image.in_slideshow, do: "Remove from background", else: "Add to background"}
+          </button>
+        </.form>
         <.form for={%{}} action={~p"/admin/images/#{image.id}"} method="delete" class="inline-form">
           <button type="submit" class="link-button danger-link" onclick="return confirm('Delete this image? Posts using it will show a broken image.')">
             Delete

@@ -23,12 +23,31 @@
             data-resize
           />
           <p class="hint" data-resize-note>
-            A square-ish photo of your face works best. Shown round on the home and About pages.
+            Shown large on the left of every page, fading into the background. A tall photo works best.
           </p>
           <label :if={@profile.photo_image_id} class="check-inline">
             <input type="checkbox" name="profile[remove_photo]" value="true" /> Remove current photo
           </label>
         </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="profile_background_photos">Background photos (optional)</label>
+      <input
+        type="file"
+        id="profile_background_photos"
+        name="profile[background_photos][]"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        data-resize
+      />
+      <p class="hint" data-resize-note>
+        Choose one or more photos (hold Ctrl to pick several). After your main photo, they fade one into the next in a loop.
+      </p>
+      <div :if={@background != []} class="bg-thumbs">
+        <img :for={image <- @background} src={Portfolio.Media.path(image)} alt="" loading="lazy" />
+        <a href={~p"/admin/images"} class="hint">Manage or remove on the Images page →</a>
       </div>
     </div>
 

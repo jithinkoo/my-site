@@ -51,12 +51,17 @@ defmodule PortfolioWeb.Router do
     get "/", PostController, :index
     resources "/posts", PostController, except: [:index, :show]
     resources "/images", ImageController, only: [:index, :create, :delete]
+    put "/images/:id/slideshow", ImageController, :slideshow
     get "/profile", ProfileController, :edit
     put "/profile", ProfileController, :update
   end
 
   defp load_profile(conn, _opts) do
-    Plug.Conn.assign(conn, :profile, Portfolio.Profiles.get_profile())
+    profile = Portfolio.Profiles.get_profile()
+
+    conn
+    |> Plug.Conn.assign(:profile, profile)
+    |> Plug.Conn.assign(:slides, Portfolio.Media.slideshow_ids(profile.photo_image_id))
   end
 
   defp put_noindex(conn, _opts) do
