@@ -78,9 +78,35 @@
 
   var train = { x: 0, travelled: 0, cars: [], length: 214 };
   var balloon = { x: 0, y: 0, vx: 0, vy: -24, phase: Math.random() * 6 };
-  var phoenix = { active: false, x: 0, y: 30, dir: 1, t: 0, wait: 2.5 };
+  var phoenix = { active: false, x: 0, y: 30, dir: 1, t: 0, wait: 2.5,
+                  state: "fly", mood: "ok", vx: 0, vy: 0, rot: 0, bandage: false };
+
+  // When a stray arrow hits the phoenix, the boy on the tree closes his
+  // laptop, climbs down, heals the bird, waves it off and climbs back up.
+  var rescue = { stage: "none", t: 0, cooldown: 12, x: 0, y: 0, face: 1, laptop: 1, force: false };
+  var hearts = [];
+  var CLIMB = 55, WALK = 100;
   var pendulum = { theta: 0.55, omega: 0, length: 64, r: 9 };
-  var cloud = { x: 0, y: 62, dropTimer: 6 };
+  var cloud = { x: 0, y: 62, dropTimer: 6, hits: 0, maxHits: 12, broken: false, respawn: 0, shake: 0 };
+
+  // The archer on the train, its arrows, and what flies out of the cloud.
+  var archer = { shootTimer: 1.5, pull: 0, aim: -0.8 };
+  var arrows = [];
+  var sparks = [];
+  var rings = [];
+  var chunks = [];
+  var loot = [];
+  var ARROW_G = 260;   // arrows fly in a gentle arc
+  var LOOT = [
+    { kind: "key", label: "Key" },
+    { kind: "mail", label: "Email" },
+    { kind: "briefcase", label: "Business" },
+    { kind: "bucket", label: "S3" },
+    { kind: "badge", label: "IAM" },
+    { kind: "police", label: "Policy" },
+    { kind: "lock", label: "Lock" },
+    { kind: "shield", label: "Shield" }
+  ];
   var tree = { x: 48 };
 
   function cssVar(name) {
@@ -216,18 +242,38 @@
     if (balloon.y < -70) resetBalloon(true);
 
     // AWS cloud drifts; now and then it drops a database (cloud storage!).
-    cloud.x += 14 * dt;
-    if (cloud.x > W + 60) cloud.x = -60;
+    // When the archer breaks it, a fresh cloud drifts back in a bit later.
+    if (cloud.broken) {
+      cloud.respawn -= dt;
+      if (cloud.respawn <= 0) {
+        cloud.broken = false;
+        cloud.hits = 0;
+        cloud.maxHits = 10 + Math.floor(Math.random() * 6);
+        cloud.x = -60;
+      }
+    } else {
+      cloud.x += 14 * dt;
+      if (cloud.x > W + 60) cloud.x = -60;
+    }
+    cloud.shake *= Math.exp(-9 * dt);
+    updateArcher(dt);
+    updateEffects(dt);
+
     cloud.dropTimer -= dt;
     if (cloud.dropTimer <= 0) {
       cloud.dropTimer = 9 + Math.random() * 5;
-      if (cloud.x > 20 && cloud.x < W - 20 && things.length < MAX_THINGS - 2) {
+      if (!cloud.broken && cloud.x > 20 && cloud.x < W - 20 && things.length < MAX_THINGS - 2) {
         addThing("database", cloud.x, cloud.y + 16);
       }
     }
 
     // Phoenix: glides across the sky, then rests before the next flight.
-    if (phoenix.active) {
+    // A hurt phoenix falls, waits for help, then lifts off again.
+    rescue.cooldown -= dt;
+    updateRescue(dt);
+    if (phoenix.state !== "fly") {
+      updateHurtBird(dt);
+    } else if (phoenix.active) {
       phoenix.t += dt;
       phoenix.x += phoenix.dir * 95 * dt;
       phoenix.y = 30 + Math.sin(phoenix.t * 2.2) * 9;
@@ -235,6 +281,8 @@
         phoenix.active = false;
         phoenix.wait = 7 + Math.random() * 5;
         phoenix.dir = -phoenix.dir;
+        phoenix.bandage = false;
+        phoenix.mood = "ok";
       }
     } else {
       phoenix.wait -= dt;
@@ -266,6 +314,7 @@
       var b = things[i];
       b.vy += GRAVITY * dt;
       if (mouse.inside) pushAway(b, 1, dt);
+      if (phoenix.state === "hurt" || boyAway()) makeRoom(b, dt);
 
       if (b.kind === "shuttle") {
         // Strong air drag: slow fall, and the heavy cork turns to lead.
@@ -338,6 +387,341 @@
         }
       }
     }
+  }
+
+  // ---------- Archer, arrows, hits and the breaking cloud ----------
+
+  // The archer sits on the roof of the middle carriage.
+  function archerSeat() {
+    var car = carRect(train.cars[1]);
+    return { x: car.x + car.w * 0.5, y: car.y };
+  }
+
+  // Bow hand: the bow arm held straight out from the shoulder, along the aim.
+  var BOW_ARM = 17;
+  var ARCHER_SCALE = 1.35;   // he stands a little taller than the other toys
+  function archerShoulder() {
+    var s = archerSeat();
+    var face = Math.cos(archer.aim) >= 0 ? 1 : -1;
+    return { x: s.x + face * ARCHER_SCALE, y: s.y - 21 * ARCHER_SCALE };
+  }
+
+  function archerHand() {
+    var sh = archerShoulder();
+    return { x: sh.x + Math.cos(archer.aim) * BOW_ARM * ARCHER_SCALE, y: sh.y + Math.sin(archer.aim) * BOW_ARM * ARCHER_SCALE };
+  }
+
+  function updateArcher(dt) {
+    var seat = archerSeat();
+    var target = cloud.broken ? { x: seat.x + 40, y: cloud.y } : { x: cloud.x, y: cloud.y };
+    var want = Math.atan2(target.y - (seat.y - 21 * ARCHER_SCALE), target.x - seat.x);
+    if (archer.paused) want = Math.atan2(0.9, Math.cos(archer.aim) >= 0 ? 1 : -1); // bow lowered
+    archer.aim += (want - archer.aim) * Math.min(1, 6 * dt);
+    archer.recoil = Math.max(0, (archer.recoil || 0) - dt * 4);
+    archer.proud = Math.max(0, (archer.proud || 0) - dt);
+    archer.oops = Math.max(0, (archer.oops || 0) - dt);
+
+    archer.shootTimer -= dt;
+    var onScreen = seat.x > 12 && seat.x < W - 12;
+    var canShoot = !cloud.broken && !archer.paused && onScreen && !reduceMotion;
+    // a slow, steady draw before each shot; the string snaps forward on release
+    var drawTarget = canShoot ? Math.max(0, Math.min(1, (0.65 - archer.shootTimer) / 0.55)) : 0;
+    archer.draw = canShoot ? drawTarget : (archer.draw || 0) * Math.exp(-6 * dt);
+    if (archer.shootTimer <= 0 && canShoot) {
+      archer.shootTimer = 1.5 + Math.random() * 0.6;
+      archer.draw = 0;
+      archer.recoil = 1;
+      var hand = archerHand();
+      var T = 0.75;                                   // flight time
+      var tx, ty;
+      var birdInView = phoenix.x > W * 0.15 && phoenix.x < W * 0.85;
+      if (birdHittable() && birdInView && (rescue.force || Math.random() < 0.18)) {
+        // a stray shot: it drifts towards where the phoenix will be
+        tx = phoenix.x + phoenix.dir * 95 * T;
+        ty = 30 + Math.sin((phoenix.t + T) * 2.2) * 9;
+      } else {
+        tx = cloud.x + 14 * T + (Math.random() - 0.5) * 10; // lead the moving cloud
+        ty = cloud.y + (Math.random() - 0.5) * 8;
+      }
+      arrows.push({
+        x: hand.x, y: hand.y,
+        vx: (tx - hand.x) / T,
+        vy: (ty - hand.y) / T - 0.5 * ARROW_G * T,
+        age: 0
+      });
+    }
+
+    for (var i = arrows.length - 1; i >= 0; i--) {
+      var a = arrows[i];
+      a.age += dt;
+      a.vy += ARROW_G * dt;
+      a.x += a.vx * dt;
+      a.y += a.vy * dt;
+      if (birdHittable() && Math.abs(a.x - phoenix.x) < 16 && Math.abs(a.y - phoenix.y) < 14) {
+        hitBird(a);
+        arrows.splice(i, 1);
+        continue;
+      }
+      var dx = (a.x - cloud.x) / 32, dy = (a.y - (cloud.y + 3)) / 19;
+      if (!cloud.broken && dx * dx + dy * dy < 1) {
+        hitCloud(a.x, a.y);
+        arrows.splice(i, 1);
+      } else if (a.age > 3 || a.y > H || a.x < -40 || a.x > W + 40) {
+        arrows.splice(i, 1);
+      }
+    }
+  }
+
+  // ---------- The phoenix rescue ----------
+
+  function birdHittable() {
+    return phoenix.active && phoenix.state === "fly" && rescue.stage === "none" &&
+           rescue.cooldown <= 0 && !phoenix.bandage;
+  }
+
+  function hitBird(a) {
+    phoenix.state = "falling";
+    phoenix.mood = "sad";
+    phoenix.vx = a.vx * 0.12;
+    phoenix.vy = -70;
+    phoenix.rot = 0;
+    archer.paused = true;
+    archer.oops = 3;
+    rescue.stage = "wait";
+    rescue.t = 0;
+    rescue.force = false;
+    rings.push({ x: phoenix.x, y: phoenix.y, r: 4, life: 0.45 });
+    for (var i = 0; i < 12; i++) {
+      var ang = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 90;
+      sparks.push({ x: phoenix.x, y: phoenix.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+                    life: 0.5 + Math.random() * 0.3, color: i % 2 ? C.peach : C.butter });
+    }
+  }
+
+  function updateHurtBird(dt) {
+    var ground = H - TRACK;
+    phoenix.t += dt;
+    if (phoenix.state === "falling") {
+      phoenix.vy += 700 * dt;
+      phoenix.x = Math.max(30, Math.min(W - 30, phoenix.x + phoenix.vx * dt));
+      phoenix.y += phoenix.vy * dt;
+      phoenix.rot += 5 * dt;
+      if (phoenix.y >= ground - 9) {
+        phoenix.y = ground - 9;
+        phoenix.state = "hurt";
+        phoenix.rot = 0;
+        for (var i = 0; i < 8; i++) {
+          sparks.push({ x: phoenix.x, y: ground - 2, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 60,
+                        life: 0.4, color: C.peach });
+        }
+        rescue.stage = "closing";
+        rescue.t = 0;
+      }
+    } else if (phoenix.state === "hurt") {
+      phoenix.y = ground - 9;
+    } else if (phoenix.state === "liftoff") {
+      phoenix.y -= 70 * dt;
+      phoenix.x += phoenix.dir * 45 * dt;
+      if (phoenix.y <= 30) {
+        phoenix.y = 30;
+        phoenix.state = "fly";
+        phoenix.t = 0;
+      }
+    }
+  }
+
+  // Toys on the ground roll aside so the hurt bird and the boy stay in view.
+  function makeRoom(b, dt) {
+    if (b.y < H - TRACK - 90) return;
+    var spots = [];
+    if (phoenix.state === "hurt" || phoenix.state === "liftoff") spots.push(phoenix.x);
+    if (boyAway() && rescue.stage !== "down" && rescue.stage !== "up") spots.push(rescue.x);
+    for (var i = 0; i < spots.length; i++) {
+      var dx = b.x - spots[i];
+      if (Math.abs(dx) < 48 + b.r) b.vx += (dx >= 0 ? 1 : -1) * 1100 * dt;
+    }
+  }
+
+  function goRescue(stage) {
+    rescue.stage = stage;
+    rescue.t = 0;
+  }
+
+  // Moves the boy towards x; true once he is there.
+  function walkTo(x, dt) {
+    var d = x - rescue.x;
+    rescue.face = d >= 0 ? 1 : -1;
+    rescue.x += Math.sign(d) * Math.min(Math.abs(d), WALK * dt);
+    return Math.abs(x - rescue.x) < 0.5;
+  }
+
+  function updateRescue(dt) {
+    var ground = H - TRACK;
+    var trunkX = tree.x + 11;
+    var top = ground - 108;
+    rescue.t += dt;
+    switch (rescue.stage) {
+      case "closing":   // the laptop lid comes down
+        rescue.laptop = Math.max(0, rescue.laptop - dt * 1.6);
+        if (rescue.laptop === 0 && rescue.t > 0.9) {
+          rescue.x = trunkX; rescue.y = top; rescue.face = -1;
+          goRescue("down");
+        }
+        break;
+      case "down":
+        rescue.y += CLIMB * dt;
+        if (rescue.y >= ground) { rescue.y = ground; goRescue("walk"); }
+        break;
+      case "walk":
+        var side = phoenix.x >= trunkX ? 1 : -1;
+        if (walkTo(phoenix.x - side * 20, dt)) {
+          rescue.face = side;
+          goRescue("heal");
+        }
+        break;
+      case "heal":
+        if (Math.random() < dt * 7) {
+          hearts.push({ x: phoenix.x + (Math.random() - 0.5) * 18, y: phoenix.y - 8,
+                        vx: (Math.random() - 0.5) * 18, life: 1.5, c: Math.random() < 0.5 ? C.coral : C.rose });
+        }
+        if (rescue.t > 1.6 && !phoenix.bandage) { phoenix.bandage = true; phoenix.mood = "happy"; }
+        if (rescue.t > 2.9) {
+          phoenix.state = "liftoff";
+          phoenix.dir = rescue.face;
+          goRescue("wave");
+        }
+        break;
+      case "wave":
+        if (rescue.t > 1.9) goRescue("walkBack");
+        break;
+      case "walkBack":
+        if (walkTo(trunkX, dt)) { rescue.face = -1; goRescue("up"); }
+        break;
+      case "up":
+        rescue.y -= CLIMB * dt;
+        if (rescue.y <= top) goRescue("opening");
+        break;
+      case "opening":   // back on his seat, the same laptop opens again
+        rescue.laptop = Math.min(1, rescue.laptop + dt * 1.6);
+        if (rescue.laptop === 1) {
+          goRescue("none");
+          archer.paused = false;
+          rescue.cooldown = 35 + Math.random() * 20;
+        }
+        break;
+    }
+    for (var i = hearts.length - 1; i >= 0; i--) {
+      var h = hearts[i];
+      h.life -= dt; h.y -= 28 * dt; h.x += h.vx * dt;
+      if (h.life <= 0) hearts.splice(i, 1);
+    }
+  }
+
+  function hitCloud(x, y) {
+    archer.proud = 1.2;
+    cloud.hits += 1;
+    cloud.shake = 4;
+    rings.push({ x: x, y: y, r: 3, life: 0.45 });
+    for (var i = 0; i < 10; i++) {
+      var ang = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 120;
+      sparks.push({ x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 0.4 + Math.random() * 0.3,
+                    color: i % 2 ? C.butter : C.coral });
+    }
+    if (cloud.hits >= cloud.maxHits) breakCloud();
+  }
+
+  function breakCloud() {
+    cloud.broken = true;
+    cloud.respawn = 7.5;
+    // soft puffs of the burst cloud drift apart and fade quickly
+    var color = cloudColor(0.65);
+    var parts = [[-18, 4, 10], [0, -4, 12], [19, 4, 9], [-8, 12, 7], [10, 12, 7], [-26, 10, 6], [27, 10, 6]];
+    parts.forEach(function (p) {
+      chunks.push({ x: cloud.x + p[0], y: cloud.y + p[1], r: p[2], color: color,
+                    vx: p[0] * 5 + (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 50, life: 1.3 });
+    });
+    rings.push({ x: cloud.x, y: cloud.y, r: 10, life: 0.6, big: true });
+    var picks = LOOT.slice().sort(function () { return Math.random() - 0.5; }).slice(0, 6 + Math.floor(Math.random() * 3));
+    picks.forEach(function (item, i) {
+      loot.push({ kind: item.kind, label: item.label, r: 12,
+                  x: cloud.x + (i - picks.length / 2) * 6, y: cloud.y,
+                  vx: (Math.random() - 0.5) * 260, vy: -120 - Math.random() * 200,
+                  angle: 0, spin: (Math.random() - 0.5) * 6, life: 10 });
+    });
+  }
+
+  function updateEffects(dt) {
+    var i;
+    for (i = sparks.length - 1; i >= 0; i--) {
+      var s = sparks[i];
+      s.life -= dt; s.vy += 300 * dt; s.x += s.vx * dt; s.y += s.vy * dt;
+      if (s.life <= 0) sparks.splice(i, 1);
+    }
+    for (i = rings.length - 1; i >= 0; i--) {
+      rings[i].life -= dt;
+      rings[i].r += (rings[i].big ? 120 : 50) * dt;
+      if (rings[i].life <= 0) rings.splice(i, 1);
+    }
+    for (i = chunks.length - 1; i >= 0; i--) {
+      var c = chunks[i];
+      c.life -= dt; c.vy += 120 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.r *= 1 + 0.5 * dt;
+      if (c.life <= 0) chunks.splice(i, 1);
+    }
+    var ground = H - TRACK;
+    for (i = loot.length - 1; i >= 0; i--) {
+      var b = loot[i];
+      b.life -= dt;
+      b.vy += 1100 * dt;
+      if (mouse.inside) pushAway(b, 0.8, dt);
+      b.vx *= 0.995;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.angle += b.spin * dt;
+      if (b.y + b.r > ground) {
+        b.y = ground - b.r;
+        b.vy = -b.vy * 0.4;
+        if (Math.abs(b.vy) < 30) b.vy = 0;
+        b.vx *= 0.85;
+        b.spin = b.vx / b.r * 0.6;
+        // settle upright once resting
+        if (b.vy === 0) b.angle *= 0.8;
+      }
+      if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.5; }
+      if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.5; }
+      if (b.life <= 0) loot.splice(i, 1);
+    }
+
+    // Items bump into each other and roll off the other objects, so they
+    // spread out instead of piling up in one spot.
+    for (var p = 0; p < loot.length; p++) {
+      for (var q = p + 1; q < loot.length; q++) separate(loot[p], loot[q], 0.5);
+      for (var t = 0; t < things.length; t++) separate(loot[p], things[t], 1);
+    }
+  }
+
+  // Pushes circle `a` out of circle `b` (and `b` out of `a` by 1 - share).
+  function separate(a, b, share) {
+    var dx = a.x - b.x, dy = a.y - b.y;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    var min = a.r + b.r;
+    if (d === 0 || d >= min) return;
+    var nx = dx / d, ny = dy / d, overlap = min - d;
+    a.x += nx * overlap * share;
+    a.y += ny * overlap * share;
+    if (share < 1) {
+      b.x -= nx * overlap * (1 - share);
+      b.y -= ny * overlap * (1 - share);
+    }
+    var vn = a.vx * nx + a.vy * ny;
+    if (vn < 0) { a.vx -= 1.4 * vn * nx; a.vy -= 1.4 * vn * ny; }
+  }
+
+  // Cloud colour: from soft and light to stormy as the hits add up.
+  function cloudColor(t) {
+    var from = colors.dark ? [253, 248, 239] : [220, 233, 245];
+    var to = colors.dark ? [70, 68, 80] : [92, 90, 104];
+    var mix = from.map(function (v, k) { return Math.round(v + (to[k] - v) * t); });
+    return "rgb(" + mix.join(",") + ")";
   }
 
   function pushAway(body, strength, dt) {
@@ -449,14 +833,375 @@
     drawMountains();
     drawTree();
     drawCloud();
+    drawChunks();
     drawBalloon();
     drawTrack();
     drawLeaves();
     drawPendulum();
     drawPuffs();
     drawTrain();
+    drawArcher();
+    drawHelper();
+    drawArrows();
     for (var i = 0; i < things.length; i++) drawThing(things[i]);
+    drawLoot();
+    drawSparks();
     if (phoenix.active || reduceMotion) drawPhoenix();
+    drawHearts();
+  }
+
+  // The Elixir archer: a seasoned bowman standing tall on the carriage roof.
+  // Wide stance, quiver on his back, bow arm straight, and the drawing hand
+  // pulled back to his cheek. Serious while he aims, proud after a hit,
+  // bow raised high when the cloud breaks, shocked if he hits the bird.
+  function drawArcher() {
+    var s = archerSeat();
+    if (s.x < -30 || s.x > W + 30) return;
+    var face = Math.cos(archer.aim) >= 0 ? 1 : -1;
+    var la = Math.atan2(Math.sin(archer.aim), Math.abs(Math.cos(archer.aim)));
+    var ca = Math.cos(la), sa = Math.sin(la);
+    var draw = archer.draw || 0;
+    var triumph = cloud.broken && !archer.paused;
+    var shocked = archer.oops > 0;
+    var proud = !shocked && (triumph || (archer.proud > 0 && draw < 0.3));
+    var r = 10;
+    var lean = -0.06 + Math.min(0, sa) * 0.12 - (proud ? 0.12 : 0);
+
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.scale(face * ARCHER_SCALE, ARCHER_SCALE);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // legs: front foot forward, back foot braced, knees soft
+    ctx.strokeStyle = C.lavenderEdge;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(1, -9); ctx.lineTo(5, -4.5); ctx.lineTo(7, -1);
+    ctx.moveTo(-1, -9); ctx.lineTo(-5, -4); ctx.lineTo(-8, -1);
+    ctx.stroke();
+    ctx.fillStyle = C.ink;
+    ctx.beginPath(); ctx.ellipse(8.4, -1, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-8.6, -1, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+
+    // body, leaning back a little: chest out
+    ctx.save();
+    ctx.translate(0, -9);
+    ctx.rotate(lean);
+
+    // quiver on his back, full of arrows
+    ctx.save();
+    ctx.translate(-7, -13);
+    ctx.rotate(-0.45);
+    ctx.fillStyle = C.peach;
+    roundRect(-2.6, -8, 5.2, 15, 2);
+    ctx.fill();
+    ctx.strokeStyle = C.coral;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-2.6, -4); ctx.lineTo(2.6, -4); ctx.stroke();
+    ctx.fillStyle = C.coral;
+    [-1.3, 1.1].forEach(function (o, k) {
+      ctx.beginPath();
+      ctx.moveTo(o, -8);
+      ctx.lineTo(o - 1.7, -12.8 - k);
+      ctx.lineTo(o + 1.7, -12.8 - k);
+      ctx.closePath();
+      ctx.fill();
+    });
+    ctx.restore();
+
+    // the Elixir drop
+    ctx.save();
+    ctx.translate(0, -r);
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.3);
+    ctx.bezierCurveTo(r * 0.85, -r * 0.35, r * 1.02, r * 0.35, 0, r);
+    ctx.bezierCurveTo(-r * 1.02, r * 0.35, -r * 0.85, -r * 0.35, 0, -r * 1.3);
+    ctx.fillStyle = C.lavender;
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = C.lavenderEdge;
+    ctx.stroke();
+
+    // headband, tails flying in the wind of the train
+    var flut = Math.sin(time * 9) * 1.6;
+    ctx.strokeStyle = C.coral;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(-6, -5.6); ctx.quadraticCurveTo(0, -7.4, 6.3, -5.2); ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-6, -6); ctx.quadraticCurveTo(-11, -8 + flut, -15, -5 - flut);
+    ctx.moveTo(-6, -5.4); ctx.quadraticCurveTo(-10, -3 + flut, -14, -1 + flut);
+    ctx.stroke();
+
+    // face
+    ctx.strokeStyle = C.ink;
+    ctx.fillStyle = C.ink;
+    ctx.lineWidth = 1;
+    if (shocked) {
+      // wide eyes, open mouth, a drop of sweat: "oh no, the bird!"
+      [1.8, 5.8].forEach(function (ex) {
+        dot(ex, -0.5, 2, "#fff");
+        ctx.beginPath(); ctx.arc(ex, -0.5, 2, 0, Math.PI * 2); ctx.stroke();
+        dot(ex + 0.3, -0.4, 0.9, C.ink);
+      });
+      ctx.beginPath(); ctx.ellipse(4, 4.2, 1.2, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = C.sky;
+      ctx.beginPath(); ctx.moveTo(-4, -6); ctx.quadraticCurveTo(-6.2, -2.5, -4, -2.2);
+      ctx.quadraticCurveTo(-1.8, -2.5, -4, -6); ctx.fill();
+    } else if (proud) {
+      // eyes closed in a happy curve, a confident smirk, a little blush
+      [2, 6].forEach(function (ex) {
+        ctx.beginPath(); ctx.arc(ex, 0.8, 1.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      });
+      ctx.beginPath(); ctx.moveTo(1.6, 3.2); ctx.quadraticCurveTo(4.6, 5.4, 7.2, 2.4); ctx.stroke();
+      ctx.globalAlpha = 0.55;
+      dot(0, 2.6, 1.4, C.rose);
+      ctx.globalAlpha = 1;
+    } else {
+      // focused: one eye squinted shut, the aiming eye fixed on the target,
+      // brows pulled down, lips pressed together
+      ctx.beginPath(); ctx.moveTo(0.8, 0); ctx.lineTo(3, 0.3); ctx.stroke();
+      dot(5.7 + ca * 0.6, -0.2 + sa * 0.6, 1.25, C.ink);
+      dot(6 + ca * 0.6, -0.6 + sa * 0.6, 0.45, "#fff");
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(0.3, -3.2); ctx.lineTo(3, -2.1);
+      ctx.moveTo(4.4, -2.2); ctx.lineTo(7.4, -3.2);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(2.8, 3.7); ctx.lineTo(6, 3.4); ctx.stroke();
+    }
+    ctx.restore(); // drop
+    ctx.restore(); // lean
+
+    // arms and bow
+    var sh = { x: 1, y: -21 };
+    var back = { x: -1, y: -20.5 };
+    ctx.strokeStyle = C.lavenderEdge;
+    ctx.lineWidth = 2.4;
+    if (triumph) {
+      // bow held high overhead, the other hand on his hip
+      var hx = 3, hy = -40 + Math.sin(time * 6) * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sh.x, sh.y); ctx.lineTo(hx, hy);
+      ctx.moveTo(back.x, back.y); ctx.lineTo(-9, -15); ctx.lineTo(-5, -11);
+      ctx.stroke();
+      ctx.strokeStyle = C.coral;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(hx, hy - 12); ctx.quadraticCurveTo(hx + 8, hy, hx, hy + 12); ctx.stroke();
+      ctx.strokeStyle = colors.muted;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(hx, hy - 12); ctx.lineTo(hx, hy + 12); ctx.stroke();
+      dot(hx, hy, 2.5, C.lavender);
+      dot(-5, -11, 2.3, C.lavender);
+    } else {
+      var dir = { x: ca, y: sa };
+      var n = { x: -sa, y: ca };
+      var push = (archer.recoil || 0) * 1.5;
+      var bh = { x: sh.x + ca * (BOW_ARM + push), y: sh.y + sa * (BOW_ARM + push) };
+      var pull = 2 + draw * 15;
+      if (archer.recoil > 0) pull = 2 + Math.sin(time * 90) * archer.recoil * 1.5; // the string hums
+      var nock = { x: bh.x - dir.x * pull, y: bh.y - dir.y * pull };
+      var bowR = 12 - draw * 1.5; // the limbs bend as he draws
+      var tipA = { x: bh.x + n.x * bowR, y: bh.y + n.y * bowR };
+      var tipB = { x: bh.x - n.x * bowR, y: bh.y - n.y * bowR };
+      // bow
+      ctx.strokeStyle = C.coral;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(tipA.x, tipA.y);
+      ctx.quadraticCurveTo(bh.x + dir.x * (7 + draw * 3), bh.y + dir.y * (7 + draw * 3), tipB.x, tipB.y);
+      ctx.stroke();
+      ctx.strokeStyle = colors.muted;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(tipA.x, tipA.y); ctx.lineTo(nock.x, nock.y); ctx.lineTo(tipB.x, tipB.y);
+      ctx.stroke();
+      // the next arrow, nocked and drawn
+      if (draw > 0.08) {
+        var tip = { x: bh.x + dir.x * 6, y: bh.y + dir.y * 6 };
+        ctx.strokeStyle = colors.text;
+        ctx.lineWidth = 1.3;
+        ctx.beginPath(); ctx.moveTo(nock.x, nock.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+        ctx.fillStyle = colors.text;
+        ctx.beginPath();
+        ctx.moveTo(tip.x + dir.x * 3, tip.y + dir.y * 3);
+        ctx.lineTo(tip.x + n.x * 2.2, tip.y + n.y * 2.2);
+        ctx.lineTo(tip.x - n.x * 2.2, tip.y - n.y * 2.2);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // bow arm straight out; drawing arm with the elbow high behind
+      var elbow = { x: nock.x - dir.x * 8, y: nock.y - dir.y * 8 - 1.5 };
+      ctx.strokeStyle = C.lavenderEdge;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(sh.x, sh.y); ctx.lineTo(bh.x, bh.y);
+      ctx.moveTo(back.x, back.y); ctx.lineTo(elbow.x, elbow.y); ctx.lineTo(nock.x, nock.y);
+      ctx.stroke();
+      dot(bh.x, bh.y, 2.5, C.lavender);
+      dot(nock.x, nock.y, 2.3, C.lavender);
+    }
+    ctx.restore();
+  }
+
+  function drawArrows() {
+    for (var i = 0; i < arrows.length; i++) {
+      var a = arrows[i];
+      var ang = Math.atan2(a.vy, a.vx);
+      ctx.save();
+      ctx.translate(a.x, a.y);
+      ctx.rotate(ang);
+      ctx.strokeStyle = colors.text;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(6, 0); ctx.stroke();
+      ctx.fillStyle = colors.text;
+      ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(3, -2.6); ctx.lineTo(3, 2.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = C.coral;
+      ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(-15, -3); ctx.lineTo(-9, 0); ctx.lineTo(-15, 3); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawSparks() {
+    sparks.forEach(function (s) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, s.life * 2.5));
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x - s.vx * 0.03, s.y - s.vy * 0.03);
+      ctx.stroke();
+    });
+    rings.forEach(function (g) {
+      ctx.globalAlpha = Math.max(0, g.life / (g.big ? 0.6 : 0.45));
+      ctx.strokeStyle = g.big ? C.butter : C.cream;
+      ctx.lineWidth = g.big ? 3 : 1.5;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawChunks() {
+    chunks.forEach(function (c) {
+      ctx.globalAlpha = Math.max(0, Math.min(0.7, c.life * 0.6));
+      dot(c.x, c.y, Math.max(1, c.r), c.color);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // What spills out of the broken cloud: the AWS world, as little icons.
+  function drawLoot() {
+    loot.forEach(function (b) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, b.life / 1.5));
+      ctx.translate(b.x, b.y);
+      ctx.save();
+      ctx.rotate(b.angle);
+      drawLootIcon(b.kind, b.r);
+      ctx.restore();
+      // The label shows while it falls and for a few seconds after, then fades.
+      var labelAlpha = Math.max(0, Math.min(1, (b.life - 5) / 1.2));
+      if (labelAlpha > 0) {
+        ctx.globalAlpha = labelAlpha * Math.max(0, Math.min(1, b.life / 1.5));
+        ctx.fillStyle = colors.muted;
+        ctx.font = "600 9px 'Segoe UI', Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(b.label, 0, b.r + 2);
+      }
+      ctx.restore();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawLootIcon(kind, r) {
+    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = colors.text;
+    switch (kind) {
+      case "key":
+        ctx.fillStyle = C.butter;
+        ctx.beginPath(); ctx.arc(-r * 0.45, 0, r * 0.42, 0, Math.PI * 2); ctx.fill(); outline(1);
+        dot(-r * 0.45, 0, r * 0.14, colors.bg);
+        ctx.fillRect(-r * 0.05, -r * 0.12, r * 1.05, r * 0.24);
+        ctx.fillRect(r * 0.62, r * 0.1, r * 0.16, r * 0.3);
+        ctx.fillRect(r * 0.85, r * 0.1, r * 0.14, r * 0.22);
+        break;
+      case "mail":
+        ctx.fillStyle = C.cream;
+        roundRect(-r, -r * 0.65, r * 2, r * 1.3, 2); ctx.fill(); outline(1);
+        ctx.strokeStyle = C.coral; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(-r, -r * 0.6); ctx.lineTo(0, r * 0.1); ctx.lineTo(r, -r * 0.6); ctx.stroke();
+        break;
+      case "briefcase":
+        ctx.strokeStyle = "#a9785a"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-r * 0.35, -r * 0.55); ctx.lineTo(-r * 0.35, -r * 0.85); ctx.lineTo(r * 0.35, -r * 0.85); ctx.lineTo(r * 0.35, -r * 0.55); ctx.stroke();
+        ctx.fillStyle = C.peach;
+        roundRect(-r, -r * 0.55, r * 2, r * 1.35, 3); ctx.fill(); outline(1);
+        ctx.fillStyle = C.butter; ctx.fillRect(-r * 0.15, -r * 0.1, r * 0.3, r * 0.25);
+        break;
+      case "bucket":
+        // a real bucket: tapered body, bands and a wire handle
+        ctx.strokeStyle = colors.muted; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(0, -r * 0.55, r * 0.85, Math.PI, 0); ctx.stroke();
+        ctx.fillStyle = C.coral;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.95, -r * 0.55); ctx.lineTo(r * 0.95, -r * 0.55);
+        ctx.lineTo(r * 0.7, r); ctx.lineTo(-r * 0.7, r); ctx.closePath();
+        ctx.fill(); outline(1);
+        ctx.fillStyle = "#f6b0a2";
+        ctx.beginPath(); ctx.ellipse(0, -r * 0.55, r * 0.95, r * 0.22, 0, 0, Math.PI * 2); ctx.fill(); outline(1);
+        ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(-r * 0.86, -r * 0.05); ctx.lineTo(r * 0.86, -r * 0.05);
+        ctx.moveTo(-r * 0.78, r * 0.5); ctx.lineTo(r * 0.78, r * 0.5); ctx.stroke();
+        break;
+      case "badge":
+        ctx.fillStyle = C.sky;
+        roundRect(-r * 0.8, -r, r * 1.6, r * 2, 3); ctx.fill(); outline(1);
+        dot(0, -r * 0.3, r * 0.3, C.cream);
+        ctx.fillStyle = C.cream;
+        ctx.beginPath(); ctx.ellipse(0, r * 0.25, r * 0.45, r * 0.25, 0, Math.PI, 0); ctx.fill();
+        ctx.fillRect(-r * 0.5, r * 0.5, r, r * 0.12);
+        break;
+      case "police":
+        // a police-style badge: shield with a star
+        ctx.fillStyle = "#7f9fd1";
+        ctx.beginPath();
+        ctx.moveTo(0, -r); ctx.lineTo(r * 0.85, -r * 0.6); ctx.lineTo(r * 0.7, r * 0.4);
+        ctx.lineTo(0, r); ctx.lineTo(-r * 0.7, r * 0.4); ctx.lineTo(-r * 0.85, -r * 0.6); ctx.closePath();
+        ctx.fill(); outline(1);
+        ctx.fillStyle = C.butter;
+        ctx.beginPath();
+        for (var i = 0; i < 10; i++) {
+          var rad = i % 2 ? r * 0.18 : r * 0.42;
+          var ang = -Math.PI / 2 + i * Math.PI / 5;
+          if (i === 0) ctx.moveTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+          else ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+        }
+        ctx.closePath(); ctx.fill();
+        break;
+      case "lock":
+        ctx.strokeStyle = C.lavenderEdge; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.arc(0, -r * 0.2, r * 0.5, Math.PI, 0); ctx.stroke();
+        ctx.fillStyle = C.lavender;
+        roundRect(-r * 0.75, -r * 0.2, r * 1.5, r * 1.15, 3); ctx.fill(); outline(1);
+        dot(0, r * 0.3, r * 0.15, C.ink);
+        break;
+      case "shield":
+        ctx.fillStyle = C.mint;
+        ctx.beginPath();
+        ctx.moveTo(0, -r); ctx.quadraticCurveTo(r * 0.9, -r * 0.8, r * 0.85, -r * 0.2);
+        ctx.quadraticCurveTo(r * 0.7, r * 0.7, 0, r);
+        ctx.quadraticCurveTo(-r * 0.7, r * 0.7, -r * 0.85, -r * 0.2);
+        ctx.quadraticCurveTo(-r * 0.9, -r * 0.8, 0, -r);
+        ctx.fill(); outline(1);
+        ctx.strokeStyle = colors.bg; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-r * 0.35, 0); ctx.lineTo(-r * 0.05, r * 0.3); ctx.lineTo(r * 0.4, -r * 0.3); ctx.stroke();
+        break;
+    }
   }
 
   function drawMountains() {
@@ -545,6 +1290,14 @@
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
+    // Away helping the phoenix: only his closed laptop waits on the seat.
+    if (boyAway()) {
+      ctx.scale(1.3, 1.3);
+      drawLaptop(0);
+      ctx.restore();
+      return;
+    }
+
     // legs: thigh forward, shin dangling and swinging
     var swing = Math.sin(t * 1.6) * 0.25;
     [[-1, 0], [2, 0.6]].forEach(function (leg) {
@@ -566,34 +1319,13 @@
     roundRect(-6, -17, 10, 18, 4);
     ctx.fill();
 
-    // laptop resting on his lap, lid open towards him
-    var lidX = 17, lidTop = -20;
-    // soft screen glow on his face side (small, so it never looks like a disc)
-    ctx.globalAlpha = colors.dark ? 0.22 : 0.14;
-    dot(lidX - 3, -10, 6, C.butter);
-    ctx.globalAlpha = 1;
-    // keyboard base on his lap
-    ctx.fillStyle = C.lavender;
-    roundRect(1, -2.5, lidX + 1, 3.2, 1.2);
-    ctx.fill();
-    // lid, tilted back, with a bright screen facing him
-    ctx.beginPath();
-    ctx.moveTo(lidX - 1, -1.5);
-    ctx.lineTo(lidX + 3, lidTop);
-    ctx.lineTo(lidX + 7.5, lidTop + 1);
-    ctx.lineTo(lidX + 3.5, -1.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = C.cream;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(lidX + 0.6, -4);
-    ctx.lineTo(lidX + 3.6, lidTop + 3);
-    ctx.stroke();
+    // laptop resting on his lap; the lid closes when the phoenix needs him
+    drawLaptop(rescue.laptop);
 
     // arms reaching to the keyboard; hands bob while typing
-    var tapA = Math.sin(t * 15) > 0.3 ? -1.2 : 0;
-    var tapB = Math.sin(t * 15 + 2) > 0.3 ? -1.2 : 0;
+    var typing = rescue.laptop === 1;
+    var tapA = typing && Math.sin(t * 15) > 0.3 ? -1.2 : 0;
+    var tapB = typing && Math.sin(t * 15 + 2) > 0.3 ? -1.2 : 0;
     ctx.strokeStyle = skin;
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -624,11 +1356,162 @@
     ctx.strokeStyle = C.ink;
     ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.arc(3, 2.6, 1.6, 0.1 * Math.PI, 0.8 * Math.PI);
+    if (rescue.stage === "wait" || rescue.stage === "closing") {
+      ctx.arc(3.2, 3, 1, 0, Math.PI * 2);   // "oh!" the bird is hurt
+    } else {
+      ctx.arc(3, 2.6, 1.6, 0.1 * Math.PI, 0.8 * Math.PI);
+    }
     ctx.stroke();
     ctx.restore();
 
     ctx.restore();
+  }
+
+  function boyAway() {
+    var st = rescue.stage;
+    return st !== "none" && st !== "wait" && st !== "closing" && st !== "opening";
+  }
+
+  // The laptop on the seat. open = 1 is the lid up with a lit screen,
+  // 0 is the lid shut flat on the keyboard. The hinge sits at the front.
+  function drawLaptop(open) {
+    var lidX = 17;
+    if (open > 0.5) {
+      // soft screen glow on his face side (small, so it never looks like a disc)
+      ctx.globalAlpha = (colors.dark ? 0.22 : 0.14) * (open - 0.5) * 2;
+      dot(lidX - 3, -10, 6, C.butter);
+      ctx.globalAlpha = 1;
+    }
+    // keyboard base
+    ctx.fillStyle = C.lavender;
+    roundRect(1, -2.5, lidX + 1, 3.2, 1.2);
+    ctx.fill();
+    // lid: swings on the hinge from flat (pointing back) to tilted up
+    var hinge = { x: lidX + 1.5, y: -3 };
+    var ang = -Math.PI + open * (Math.PI - 1.36);
+    var ux = Math.cos(ang), uy = Math.sin(ang);
+    ctx.strokeStyle = C.lavender;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(hinge.x, hinge.y);
+    ctx.lineTo(hinge.x + ux * 17.5, hinge.y + uy * 17.5);
+    ctx.stroke();
+    if (open > 0.15) {
+      // the bright screen faces him
+      ctx.globalAlpha = Math.min(1, open * 1.5);
+      ctx.strokeStyle = C.cream;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(hinge.x + ux * 3 + uy * 1.2, hinge.y + uy * 3 - ux * 1.2);
+      ctx.lineTo(hinge.x + ux * 15 + uy * 1.2, hinge.y + uy * 15 - ux * 1.2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // The boy on the ground: climbing the trunk, walking, kneeling to heal
+  // the phoenix, and waving it goodbye.
+  function drawHelper() {
+    if (!boyAway()) return;
+    var st = rescue.stage;
+    var skin = "#f2c9a5";
+    var hair = "#4a3a33";
+    var climbing = st === "down" || st === "up";
+    var walking = st === "walk" || st === "walkBack";
+    var kneel = st === "heal";
+    var ph = rescue.t * 10;
+
+    ctx.save();
+    ctx.translate(rescue.x, rescue.y);
+    ctx.scale(rescue.face, 1);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    var hip = kneel ? -8 : -14;
+    // legs
+    ctx.strokeStyle = "#8aa6c9";
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    var feet;
+    if (kneel) {
+      ctx.moveTo(0, hip); ctx.lineTo(6, hip + 1); ctx.lineTo(6, 0);   // front knee up
+      ctx.moveTo(0, hip); ctx.lineTo(-2, 0); ctx.lineTo(-9, 0);      // back knee down
+      feet = [[7.5, 0], [-10, -0.5]];
+    } else {
+      var sw = walking ? Math.sin(ph) * 0.5 : climbing ? Math.sin(ph) * 0.4 : 0;
+      feet = [];
+      [1, -1].forEach(function (sg) {
+        var a = sw * sg;
+        var fx = Math.sin(a) * 14 + (climbing ? 3 : 0), fy = hip + Math.cos(a) * 14;
+        var kx = Math.sin(a) * 7 + (climbing ? 5 : 1.5), ky = hip + 7;
+        ctx.moveTo(0, hip); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy);
+        feet.push([fx + 1.5, fy]);
+      });
+    }
+    ctx.stroke();
+    feet.forEach(function (f) { dot(f[0], f[1] - 1, 2.6, C.ink); });
+
+    // body
+    var bodyTop = hip - 17;
+    ctx.fillStyle = C.coral;
+    roundRect(-5, bodyTop, 10, 18, 4);
+    ctx.fill();
+
+    // arms
+    var shX = 1, shY = bodyTop + 3;
+    var hands;
+    if (climbing) {
+      hands = [[8, shY - 6 + Math.sin(ph) * 3], [8, shY + 2 - Math.sin(ph) * 3]];   // gripping the trunk
+    } else if (walking) {
+      hands = [[Math.sin(ph) * 7, shY + 11], [-Math.sin(ph) * 7, shY + 11]];
+    } else if (kneel) {
+      var rub = Math.sin(rescue.t * 7) * 1.5;
+      hands = [[14 + rub, hip + 1], [12 - rub, hip + 3]];                          // gently on the bird
+    } else {
+      hands = [[3, shY + 11], [7 + Math.sin(rescue.t * 11) * 3, shY - 13]];        // waving goodbye
+    }
+    ctx.strokeStyle = skin;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    hands.forEach(function (h) { ctx.moveTo(shX, shY); ctx.lineTo(h[0], h[1]); });
+    ctx.stroke();
+    hands.forEach(function (h) { dot(h[0], h[1], 1.8, skin); });
+
+    // head
+    ctx.save();
+    ctx.translate(1, bodyTop - 5);
+    ctx.rotate(kneel ? 0.35 : climbing ? -0.15 : 0);
+    dot(0, 0, 6.5, skin);
+    ctx.fillStyle = hair;
+    ctx.beginPath();
+    ctx.arc(0, -1, 6.8, Math.PI * 0.95, Math.PI * 2.05);
+    ctx.lineTo(4, -2);
+    ctx.quadraticCurveTo(0, -3.5, -6.5, 0);
+    ctx.closePath();
+    ctx.fill();
+    dot(3.3, 0.5, 1.1, C.ink);
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(3, 2.4, 1.8, 0.1 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  function drawHearts() {
+    hearts.forEach(function (h) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, h.life));
+      var s = 3.6;
+      ctx.fillStyle = h.c;
+      ctx.beginPath();
+      ctx.moveTo(h.x, h.y + s * 0.9);
+      ctx.bezierCurveTo(h.x - s * 1.6, h.y - s * 0.2, h.x - s * 0.6, h.y - s * 1.4, h.x, h.y - s * 0.5);
+      ctx.bezierCurveTo(h.x + s * 0.6, h.y - s * 1.4, h.x + s * 1.6, h.y - s * 0.2, h.x, h.y + s * 0.9);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
   }
 
   function drawLeaves() {
@@ -648,10 +1531,12 @@
   }
 
   function drawCloud() {
-    var x = cloud.x, y = cloud.y;
-    // Pale sky-blue on the light theme, soft cream on the dark theme.
-    ctx.globalAlpha = colors.dark ? 0.55 : 1;
-    ctx.fillStyle = colors.dark ? C.cream : "#dce9f5";
+    if (cloud.broken) return;
+    var darkness = Math.min(1, cloud.hits / cloud.maxHits);
+    var x = cloud.x + Math.sin(time * 60) * cloud.shake, y = cloud.y;
+    // Pale on the light theme, soft cream on the dark theme; darker with each hit.
+    ctx.globalAlpha = colors.dark ? 0.55 + darkness * 0.4 : 1;
+    ctx.fillStyle = cloudColor(darkness);
     ctx.beginPath();
     ctx.arc(x - 18, y + 4, 13, 0, Math.PI * 2);
     ctx.arc(x, y - 4, 17, 0, Math.PI * 2);
@@ -659,7 +1544,22 @@
     ctx.rect(x - 18, y + 4, 37, 13);
     ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = colors.dark ? C.butter : C.coral;
+
+    // cracks appear as it weakens
+    var cracks = Math.floor(darkness * 5);
+    ctx.strokeStyle = colors.dark ? "rgba(20,20,26,0.7)" : "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1.3;
+    for (var k = 0; k < cracks; k++) {
+      var a = k * 2.1 + 0.4;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * 4, y + Math.sin(a) * 3);
+      ctx.lineTo(x + Math.cos(a + 0.3) * 10, y + Math.sin(a + 0.3) * 7 - 2);
+      ctx.lineTo(x + Math.cos(a - 0.2) * 17, y + Math.sin(a - 0.2) * 11);
+      ctx.lineTo(x + Math.cos(a + 0.2) * 24, y + Math.sin(a + 0.2) * 13);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = darkness > 0.6 ? C.butter : colors.dark ? C.butter : C.coral;
     ctx.font = "700 11px 'Segoe UI', Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -1081,10 +1981,15 @@
   function drawPhoenix() {
     var x = reduceMotion ? W * 0.3 : phoenix.x;
     var y = reduceMotion ? 30 : phoenix.y;
-    var flap = Math.sin(phoenix.t * 10) * 0.7;
+    var st = phoenix.state;
+    var flap = st === "falling" ? Math.sin(phoenix.t * 26) * 0.9   // flapping in panic
+             : st === "hurt" ? 0.55                                // wings limp
+             : Math.sin(phoenix.t * (st === "liftoff" ? 14 : 10)) * 0.7;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(phoenix.dir, 1);
+    if (st === "falling") ctx.rotate(phoenix.rot);
+    if (st === "hurt") ctx.rotate(0.3 + Math.sin(phoenix.t * 3) * 0.03);   // slumped, head down
     var tail = [C.butter, C.peach, C.coral];
     for (var i = 0; i < 3; i++) {
       var len = 22 + i * 5 + Math.sin(phoenix.t * 12 + i) * 3;
@@ -1116,10 +2021,54 @@
     ctx.quadraticCurveTo(10, -16, 14, -10);
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(18, -6); ctx.lineTo(24, -4); ctx.lineTo(18, -2);
+    if (phoenix.mood === "sad") {
+      ctx.moveTo(18, -6); ctx.lineTo(23, -1); ctx.lineTo(18, -2);   // beak drooping
+    } else {
+      ctx.moveTo(18, -6); ctx.lineTo(24, -4); ctx.lineTo(18, -2);
+    }
     ctx.fill();
-    dot(14, -6, 1.6, C.ink);
-    dot(14.5, -6.6, 0.6, "#fff");
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.1;
+    ctx.lineCap = "round";
+    if (phoenix.mood === "sad") {
+      // droopy closed eye, a sad brow, and a tear rolling down
+      ctx.beginPath(); ctx.arc(14, -6.5, 1.8, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(11.5, -10.5); ctx.lineTo(16, -9); ctx.stroke();
+      var tearY = -3 + ((phoenix.t * 9) % 7);
+      ctx.fillStyle = C.sky;
+      ctx.beginPath();
+      ctx.moveTo(13.5, tearY - 2.4);
+      ctx.quadraticCurveTo(11.8, tearY + 0.4, 13.5, tearY + 0.9);
+      ctx.quadraticCurveTo(15.2, tearY + 0.4, 13.5, tearY - 2.4);
+      ctx.fill();
+    } else if (phoenix.mood === "happy") {
+      ctx.beginPath(); ctx.arc(14, -5.2, 1.8, 1.1 * Math.PI, 1.9 * Math.PI); ctx.stroke();   // smiling eye
+    } else {
+      dot(14, -6, 1.6, C.ink);
+      dot(14.5, -6.6, 0.6, "#fff");
+    }
+    if (st === "hurt") {
+      // little stars circling its head
+      for (var k = 0; k < 3; k++) {
+        var ang = phoenix.t * 4 + k * 2.1;
+        dot(12 + Math.cos(ang) * 9, -16 + Math.sin(ang) * 3, 1.5, C.butter);
+      }
+    }
+    if (phoenix.bandage) {
+      // a plaster on its side
+      ctx.save();
+      ctx.translate(1, 3);
+      ctx.rotate(-0.4);
+      ctx.fillStyle = C.cream;
+      roundRect(-5, -2, 10, 4, 1.5);
+      ctx.fill();
+      ctx.strokeStyle = C.rose;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      ctx.fillStyle = C.rose;
+      ctx.fillRect(-1.5, -1.5, 3, 3);
+      ctx.restore();
+    }
     ctx.save();
     ctx.rotate(flap);
     ctx.fillStyle = C.butter;
@@ -1153,6 +2102,13 @@
     var rect = canvas.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
+
+  // For trying the rescue without waiting: the next shot strays to the bird.
+  canvas.rescueSoon = function () { rescue.cooldown = 0; rescue.force = true; };
+  canvas.peek = function () {
+    return { archer: archerSeat(), stage: rescue.stage, bird: phoenix.state, helper: { x: rescue.x, y: rescue.y },
+             phoenix: { x: phoenix.x, y: phoenix.y, active: phoenix.active }, draw: archer.draw || 0, proud: archer.proud || 0 };
+  };
 
   canvas.addEventListener("pointermove", function (e) {
     var p = pointerPos(e);
