@@ -78,12 +78,17 @@
 
   var train = { x: 0, travelled: 0, cars: [], length: 214 };
   var balloon = { x: 0, y: 0, vx: 0, vy: -24, phase: Math.random() * 6 };
-  var phoenix = { active: false, x: 0, y: 30, dir: 1, t: 0, wait: 2.5,
+  var phoenix = { active: false, x: 0, y: 30, dir: 1, t: 0, wait: 2.5, baseY: 30, speed: 95, bob: 9,
                   state: "fly", mood: "ok", vx: 0, vy: 0, rot: 0, bandage: false };
+  // A little bluebird flies lower, through the cloud's height, the other way.
+  var bluebird = { active: false, x: 0, y: 66, dir: -1, t: 0, wait: 5, baseY: 66, speed: 70, bob: 6,
+                   state: "fly", mood: "ok", vx: 0, vy: 0, rot: 0, bandage: false };
+  var birds = [phoenix, bluebird];
+  var victim = phoenix;   // the bird the boy is helping
 
   // When a stray arrow hits the phoenix, the boy on the tree closes his
   // laptop, climbs down, heals the bird, waves it off and climbs back up.
-  var rescue = { stage: "none", t: 0, cooldown: 12, x: 0, y: 0, face: 1, laptop: 1, force: false };
+  var rescue = { stage: "none", t: 0, cooldown: 6, x: 0, y: 0, face: 1, laptop: 1, force: false };
   var hearts = [];
   var CLIMB = 55, WALK = 100;
   var pendulum = { theta: 0.55, omega: 0, length: 64, r: 9 };
@@ -267,31 +272,11 @@
       }
     }
 
-    // Phoenix: glides across the sky, then rests before the next flight.
-    // A hurt phoenix falls, waits for help, then lifts off again.
+    // Birds: glide across the sky, then rest before the next flight.
+    // A hurt bird falls, waits for help, then lifts off again.
     rescue.cooldown -= dt;
     updateRescue(dt);
-    if (phoenix.state !== "fly") {
-      updateHurtBird(dt);
-    } else if (phoenix.active) {
-      phoenix.t += dt;
-      phoenix.x += phoenix.dir * 95 * dt;
-      phoenix.y = 30 + Math.sin(phoenix.t * 2.2) * 9;
-      if (phoenix.x < -60 || phoenix.x > W + 60) {
-        phoenix.active = false;
-        phoenix.wait = 7 + Math.random() * 5;
-        phoenix.dir = -phoenix.dir;
-        phoenix.bandage = false;
-        phoenix.mood = "ok";
-      }
-    } else {
-      phoenix.wait -= dt;
-      if (phoenix.wait <= 0) {
-        phoenix.active = true;
-        phoenix.t = 0;
-        phoenix.x = phoenix.dir > 0 ? -50 : W + 50;
-      }
-    }
+    birds.forEach(function (bd) { stepBird(bd, dt); });
 
     // Pendulum: theta'' = -(g / L) sin(theta), with a little air damping.
     pendulum.omega += -(GRAVITY / pendulum.length / 6) * Math.sin(pendulum.theta) * dt;
@@ -314,7 +299,7 @@
       var b = things[i];
       b.vy += GRAVITY * dt;
       if (mouse.inside) pushAway(b, 1, dt);
-      if (phoenix.state === "hurt" || boyAway()) makeRoom(b, dt);
+      if (victim.state === "hurt" || boyAway()) makeRoom(b, dt);
 
       if (b.kind === "shuttle") {
         // Strong air drag: slow fall, and the heavy cork turns to lead.
@@ -434,11 +419,11 @@
       var hand = archerHand();
       var T = 0.75;                                   // flight time
       var tx, ty;
-      var birdInView = phoenix.x > W * 0.15 && phoenix.x < W * 0.85;
-      if (birdHittable() && birdInView && (rescue.force || Math.random() < 0.18)) {
-        // a stray shot: it drifts towards where the phoenix will be
-        tx = phoenix.x + phoenix.dir * 95 * T;
-        ty = 30 + Math.sin((phoenix.t + T) * 2.2) * 9;
+      var stray = birdNearCloud(T);
+      if (stray) {
+        // the bird flies into the line of fire: the shot misses the cloud
+        tx = stray.x + stray.dir * stray.speed * T;
+        ty = stray.baseY + Math.sin((stray.t + T) * 2.2) * stray.bob;
       } else {
         tx = cloud.x + 14 * T + (Math.random() - 0.5) * 10; // lead the moving cloud
         ty = cloud.y + (Math.random() - 0.5) * 8;
@@ -447,7 +432,8 @@
         x: hand.x, y: hand.y,
         vx: (tx - hand.x) / T,
         vy: (ty - hand.y) / T - 0.5 * ARROW_G * T,
-        age: 0
+        age: 0,
+        stray: !!stray
       });
     }
 
@@ -457,13 +443,17 @@
       a.vy += ARROW_G * dt;
       a.x += a.vx * dt;
       a.y += a.vy * dt;
-      if (birdHittable() && Math.abs(a.x - phoenix.x) < 16 && Math.abs(a.y - phoenix.y) < 14) {
-        hitBird(a);
+      var hitB = null;
+      birds.forEach(function (bd) {
+        if (!hitB && birdHittable(bd) && Math.abs(a.x - bd.x) < 16 && Math.abs(a.y - bd.y) < 14) hitB = bd;
+      });
+      if (hitB) {
+        hitBird(hitB, a);
         arrows.splice(i, 1);
         continue;
       }
       var dx = (a.x - cloud.x) / 32, dy = (a.y - (cloud.y + 3)) / 19;
-      if (!cloud.broken && dx * dx + dy * dy < 1) {
+      if (!cloud.broken && !a.stray && dx * dx + dy * dy < 1) {
         hitCloud(a.x, a.y);
         arrows.splice(i, 1);
       } else if (a.age > 3 || a.y > H || a.x < -40 || a.x > W + 40) {
@@ -472,60 +462,99 @@
     }
   }
 
-  // ---------- The phoenix rescue ----------
+  // ---------- The bird rescue ----------
 
-  function birdHittable() {
-    return phoenix.active && phoenix.state === "fly" && rescue.stage === "none" &&
-           rescue.cooldown <= 0 && !phoenix.bandage;
+  // Each bird glides across, rests off screen, and comes back the other way.
+  function stepBird(b, dt) {
+    if (b.state !== "fly") {
+      updateHurtBird(b, dt);
+    } else if (b.active) {
+      b.t += dt;
+      b.x += b.dir * b.speed * dt;
+      b.y = b.baseY + Math.sin(b.t * 2.2) * b.bob;
+      if (b.x < -60 || b.x > W + 60) {
+        b.active = false;
+        b.wait = (b === phoenix ? 7 : 5) + Math.random() * 5;
+        b.dir = -b.dir;
+        b.bandage = false;
+        b.mood = "ok";
+      }
+    } else {
+      b.wait -= dt;
+      if (b.wait <= 0) {
+        b.active = true;
+        b.t = 0;
+        b.x = b.dir > 0 ? -50 : W + 50;
+      }
+    }
   }
 
-  function hitBird(a) {
-    phoenix.state = "falling";
-    phoenix.mood = "sad";
-    phoenix.vx = a.vx * 0.12;
-    phoenix.vy = -70;
-    phoenix.rot = 0;
+  function birdHittable(b) {
+    return b.active && b.state === "fly" && rescue.stage === "none" &&
+           rescue.cooldown <= 0 && !b.bandage;
+  }
+
+  // A bird that will be close to the cloud when the next arrow gets there.
+  function birdNearCloud(T) {
+    for (var i = 0; i < birds.length; i++) {
+      var b = birds[i];
+      if (!birdHittable(b)) continue;
+      var bx = b.x + b.dir * b.speed * T;
+      if (bx < 25 || bx > W - 25) continue;
+      if (rescue.force || Math.abs(bx - (cloud.x + 14 * T)) < 90) return b;
+    }
+    return null;
+  }
+
+  function hitBird(b, a) {
+    victim = b;
+    b.state = "falling";
+    b.mood = "sad";
+    b.vx = a.vx * 0.12;
+    b.vy = -70;
+    b.rot = 0;
     archer.paused = true;
     archer.oops = 3;
     rescue.stage = "wait";
     rescue.t = 0;
     rescue.force = false;
-    rings.push({ x: phoenix.x, y: phoenix.y, r: 4, life: 0.45 });
+    rings.push({ x: b.x, y: b.y, r: 4, life: 0.45 });
     for (var i = 0; i < 12; i++) {
       var ang = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 90;
-      sparks.push({ x: phoenix.x, y: phoenix.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
-                    life: 0.5 + Math.random() * 0.3, color: i % 2 ? C.peach : C.butter });
+      sparks.push({ x: b.x, y: b.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+                    life: 0.5 + Math.random() * 0.3, color: i % 2 ? C.peach : (b === phoenix ? C.butter : C.sky) });
     }
   }
 
-  function updateHurtBird(dt) {
+  function updateHurtBird(b, dt) {
     var ground = H - TRACK;
-    phoenix.t += dt;
-    if (phoenix.state === "falling") {
-      phoenix.vy += 700 * dt;
-      phoenix.x = Math.max(30, Math.min(W - 30, phoenix.x + phoenix.vx * dt));
-      phoenix.y += phoenix.vy * dt;
-      phoenix.rot += 5 * dt;
-      if (phoenix.y >= ground - 9) {
-        phoenix.y = ground - 9;
-        phoenix.state = "hurt";
-        phoenix.rot = 0;
+    var rest = ground - (b === phoenix ? 9 : 8);
+    b.t += dt;
+    if (b.state === "falling") {
+      b.vy += 700 * dt;
+      b.x = Math.max(30, Math.min(W - 30, b.x + b.vx * dt));
+      b.y += b.vy * dt;
+      b.rot += 5 * dt;
+      if (b.y >= rest) {
+        b.y = rest;
+        b.state = "hurt";
+        b.rot = 0;
         for (var i = 0; i < 8; i++) {
-          sparks.push({ x: phoenix.x, y: ground - 2, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 60,
+          sparks.push({ x: b.x, y: ground - 2, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 60,
                         life: 0.4, color: C.peach });
         }
         rescue.stage = "closing";
         rescue.t = 0;
       }
-    } else if (phoenix.state === "hurt") {
-      phoenix.y = ground - 9;
-    } else if (phoenix.state === "liftoff") {
-      phoenix.y -= 70 * dt;
-      phoenix.x += phoenix.dir * 45 * dt;
-      if (phoenix.y <= 30) {
-        phoenix.y = 30;
-        phoenix.state = "fly";
-        phoenix.t = 0;
+    } else if (b.state === "hurt") {
+      b.y = rest;
+    } else if (b.state === "liftoff") {
+      b.y -= 70 * dt;
+      b.x += b.dir * 45 * dt;
+      if (b.y <= b.baseY) {
+        b.y = b.baseY;
+        b.state = "fly";
+        b.t = 0;
       }
     }
   }
@@ -534,7 +563,7 @@
   function makeRoom(b, dt) {
     if (b.y < H - TRACK - 90) return;
     var spots = [];
-    if (phoenix.state === "hurt" || phoenix.state === "liftoff") spots.push(phoenix.x);
+    if (victim.state === "hurt" || victim.state === "liftoff") spots.push(victim.x);
     if (boyAway() && rescue.stage !== "down" && rescue.stage !== "up") spots.push(rescue.x);
     for (var i = 0; i < spots.length; i++) {
       var dx = b.x - spots[i];
@@ -573,21 +602,21 @@
         if (rescue.y >= ground) { rescue.y = ground; goRescue("walk"); }
         break;
       case "walk":
-        var side = phoenix.x >= trunkX ? 1 : -1;
-        if (walkTo(phoenix.x - side * 20, dt)) {
+        var side = victim.x >= trunkX ? 1 : -1;
+        if (walkTo(victim.x - side * 20, dt)) {
           rescue.face = side;
           goRescue("heal");
         }
         break;
       case "heal":
         if (Math.random() < dt * 7) {
-          hearts.push({ x: phoenix.x + (Math.random() - 0.5) * 18, y: phoenix.y - 8,
+          hearts.push({ x: victim.x + (Math.random() - 0.5) * 18, y: victim.y - 8,
                         vx: (Math.random() - 0.5) * 18, life: 1.5, c: Math.random() < 0.5 ? C.coral : C.rose });
         }
-        if (rescue.t > 1.6 && !phoenix.bandage) { phoenix.bandage = true; phoenix.mood = "happy"; }
+        if (rescue.t > 1.6 && !victim.bandage) { victim.bandage = true; victim.mood = "happy"; }
         if (rescue.t > 2.9) {
-          phoenix.state = "liftoff";
-          phoenix.dir = rescue.face;
+          victim.state = "liftoff";
+          victim.dir = rescue.face;
           goRescue("wave");
         }
         break;
@@ -671,7 +700,9 @@
     for (i = loot.length - 1; i >= 0; i--) {
       var b = loot[i];
       b.life -= dt;
-      b.vy += 1100 * dt;
+      // The blast keeps its pop; on the way down the items drift more gently.
+      if (b.vy < 0) b.vy += 1100 * dt;
+      else b.vy = Math.min(b.vy + 480 * dt, 230);
       if (mouse.inside) pushAway(b, 0.8, dt);
       b.vx *= 0.995;
       b.x += b.vx * dt;
@@ -847,6 +878,7 @@
     drawLoot();
     drawSparks();
     if (phoenix.active || reduceMotion) drawPhoenix();
+    if (bluebird.active && !reduceMotion) drawBluebird();
     drawHearts();
   }
 
@@ -1103,16 +1135,6 @@
       ctx.rotate(b.angle);
       drawLootIcon(b.kind, b.r);
       ctx.restore();
-      // The label shows while it falls and for a few seconds after, then fades.
-      var labelAlpha = Math.max(0, Math.min(1, (b.life - 5) / 1.2));
-      if (labelAlpha > 0) {
-        ctx.globalAlpha = labelAlpha * Math.max(0, Math.min(1, b.life / 1.5));
-        ctx.fillStyle = colors.muted;
-        ctx.font = "600 9px 'Segoe UI', Inter, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-        ctx.fillText(b.label, 0, b.r + 2);
-      }
       ctx.restore();
     });
     ctx.globalAlpha = 1;
@@ -1280,7 +1302,7 @@
     var skin = "#f2c9a5";
     var hair = "#4a3a33";
     var t = time;
-    var lookUp = phoenix.active && Math.abs(phoenix.x - x) < 160 ? 1 : 0;
+    var lookUp = birds.some(function (bd) { return bd.active && bd.state === "fly" && Math.abs(bd.x - x) < 160; }) ? 1 : 0;
     boy.lookUp = (boy.lookUp || 0) + (lookUp - (boy.lookUp || 0)) * 0.08;
     boy.blink -= 1 / 120;
     if (boy.blink < -0.12) boy.blink = 2.5 + Math.random() * 3;
@@ -1293,7 +1315,7 @@
     // Away helping the phoenix: only his closed laptop waits on the seat.
     if (boyAway()) {
       ctx.scale(1.3, 1.3);
-      drawLaptop(0);
+      drawBoyLaptop(0);
       ctx.restore();
       return;
     }
@@ -1320,7 +1342,7 @@
     ctx.fill();
 
     // laptop resting on his lap; the lid closes when the phoenix needs him
-    drawLaptop(rescue.laptop);
+    drawBoyLaptop(rescue.laptop);
 
     // arms reaching to the keyboard; hands bob while typing
     var typing = rescue.laptop === 1;
@@ -1374,7 +1396,7 @@
 
   // The laptop on the seat. open = 1 is the lid up with a lit screen,
   // 0 is the lid shut flat on the keyboard. The hinge sits at the front.
-  function drawLaptop(open) {
+  function drawBoyLaptop(open) {
     var lidX = 17;
     if (open > 0.5) {
       // soft screen glow on his face side (small, so it never looks like a disc)
@@ -2027,48 +2049,8 @@
       ctx.moveTo(18, -6); ctx.lineTo(24, -4); ctx.lineTo(18, -2);
     }
     ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 1.1;
-    ctx.lineCap = "round";
-    if (phoenix.mood === "sad") {
-      // droopy closed eye, a sad brow, and a tear rolling down
-      ctx.beginPath(); ctx.arc(14, -6.5, 1.8, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(11.5, -10.5); ctx.lineTo(16, -9); ctx.stroke();
-      var tearY = -3 + ((phoenix.t * 9) % 7);
-      ctx.fillStyle = C.sky;
-      ctx.beginPath();
-      ctx.moveTo(13.5, tearY - 2.4);
-      ctx.quadraticCurveTo(11.8, tearY + 0.4, 13.5, tearY + 0.9);
-      ctx.quadraticCurveTo(15.2, tearY + 0.4, 13.5, tearY - 2.4);
-      ctx.fill();
-    } else if (phoenix.mood === "happy") {
-      ctx.beginPath(); ctx.arc(14, -5.2, 1.8, 1.1 * Math.PI, 1.9 * Math.PI); ctx.stroke();   // smiling eye
-    } else {
-      dot(14, -6, 1.6, C.ink);
-      dot(14.5, -6.6, 0.6, "#fff");
-    }
-    if (st === "hurt") {
-      // little stars circling its head
-      for (var k = 0; k < 3; k++) {
-        var ang = phoenix.t * 4 + k * 2.1;
-        dot(12 + Math.cos(ang) * 9, -16 + Math.sin(ang) * 3, 1.5, C.butter);
-      }
-    }
-    if (phoenix.bandage) {
-      // a plaster on its side
-      ctx.save();
-      ctx.translate(1, 3);
-      ctx.rotate(-0.4);
-      ctx.fillStyle = C.cream;
-      roundRect(-5, -2, 10, 4, 1.5);
-      ctx.fill();
-      ctx.strokeStyle = C.rose;
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-      ctx.fillStyle = C.rose;
-      ctx.fillRect(-1.5, -1.5, 3, 3);
-      ctx.restore();
-    }
+    drawBirdFace(phoenix, 14, -6);
+    drawBirdCare(phoenix, 1, 3);
     ctx.save();
     ctx.rotate(flap);
     ctx.fillStyle = C.butter;
@@ -2077,6 +2059,98 @@
     ctx.quadraticCurveTo(-2, -26, -16, -30);
     ctx.quadraticCurveTo(-6, -14, -2, 3);
     ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // A bird's eye by mood: bright and round, sad with a brow and a tear,
+  // or a happy curve. (ex, ey) is the eye in the bird's own coordinates.
+  function drawBirdFace(b, ex, ey) {
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.1;
+    ctx.lineCap = "round";
+    if (b.mood === "sad") {
+      ctx.beginPath(); ctx.arc(ex, ey - 0.5, 1.8, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex - 2.5, ey - 4.5); ctx.lineTo(ex + 2, ey - 3); ctx.stroke();
+      var tearY = ey + 3 + ((b.t * 9) % 7);
+      ctx.fillStyle = C.sky;
+      ctx.beginPath();
+      ctx.moveTo(ex - 0.5, tearY - 2.4);
+      ctx.quadraticCurveTo(ex - 2.2, tearY + 0.4, ex - 0.5, tearY + 0.9);
+      ctx.quadraticCurveTo(ex + 1.2, tearY + 0.4, ex - 0.5, tearY - 2.4);
+      ctx.fill();
+    } else if (b.mood === "happy") {
+      ctx.beginPath(); ctx.arc(ex, ey + 0.8, 1.8, 1.1 * Math.PI, 1.9 * Math.PI); ctx.stroke();
+    } else {
+      dot(ex, ey, 1.6, C.ink);
+      dot(ex + 0.5, ey - 0.6, 0.6, "#fff");
+    }
+    if (b.state === "hurt") {
+      // little stars circling its head
+      for (var k = 0; k < 3; k++) {
+        var ang = b.t * 4 + k * 2.1;
+        dot(ex - 2 + Math.cos(ang) * 9, ey - 10 + Math.sin(ang) * 3, 1.5, C.butter);
+      }
+    }
+  }
+
+  // The plaster the boy puts on, at (px, py) on the bird's side.
+  function drawBirdCare(b, px, py) {
+    if (!b.bandage) return;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(-0.4);
+    ctx.fillStyle = C.cream;
+    roundRect(-5, -2, 10, 4, 1.5);
+    ctx.fill();
+    ctx.strokeStyle = C.rose;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.fillStyle = C.rose;
+    ctx.fillRect(-1.5, -1.5, 3, 3);
+    ctx.restore();
+  }
+
+  // A small round bluebird that flies lower, right at the cloud's height.
+  function drawBluebird() {
+    var b = bluebird;
+    var st = b.state;
+    var flap = st === "falling" ? Math.sin(b.t * 30) * 0.9
+             : st === "hurt" ? 0.6
+             : Math.sin(b.t * 16) * 0.8;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.scale(b.dir, 1);
+    if (st === "falling") ctx.rotate(b.rot);
+    if (st === "hurt") ctx.rotate(0.3 + Math.sin(b.t * 3) * 0.03);
+    // tail
+    ctx.fillStyle = C.lavenderEdge;
+    ctx.beginPath();
+    ctx.moveTo(-6, -1); ctx.lineTo(-15, -5); ctx.lineTo(-14, 2); ctx.closePath();
+    ctx.fill();
+    // back wing
+    ctx.save();
+    ctx.rotate(-flap * 0.5);
+    ctx.fillStyle = "#7fa6cf";
+    ctx.beginPath(); ctx.ellipse(-3, -6, 7, 3.5, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // round body with a cream belly
+    dot(0, 0, 8.5, C.sky);
+    ctx.fillStyle = C.cream;
+    ctx.beginPath(); ctx.ellipse(2, 3, 5.5, 4, 0.2, 0, Math.PI * 2); ctx.fill();
+    // beak
+    ctx.fillStyle = C.butter;
+    ctx.beginPath();
+    if (b.mood === "sad") { ctx.moveTo(7.5, -2.5); ctx.lineTo(11, 1.5); ctx.lineTo(7, 0.5); }
+    else { ctx.moveTo(7.5, -3); ctx.lineTo(12.5, -1.2); ctx.lineTo(7.5, 0.5); }
+    ctx.fill();
+    drawBirdFace(b, 4, -3.5);
+    drawBirdCare(b, -1, 2);
+    // front wing
+    ctx.save();
+    ctx.rotate(flap);
+    ctx.fillStyle = "#8db4dc";
+    ctx.beginPath(); ctx.ellipse(-2, -4, 8, 3.8, -0.7, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     ctx.restore();
   }
@@ -2106,8 +2180,8 @@
   // For trying the rescue without waiting: the next shot strays to the bird.
   canvas.rescueSoon = function () { rescue.cooldown = 0; rescue.force = true; };
   canvas.peek = function () {
-    return { archer: archerSeat(), stage: rescue.stage, bird: phoenix.state, helper: { x: rescue.x, y: rescue.y },
-             phoenix: { x: phoenix.x, y: phoenix.y, active: phoenix.active }, draw: archer.draw || 0, proud: archer.proud || 0 };
+    return { archer: archerSeat(), stage: rescue.stage, bird: victim.state, victimKind: victim === phoenix ? "phoenix" : "bluebird", helper: { x: rescue.x, y: rescue.y },
+             phoenix: { x: victim.x, y: victim.y, active: victim.active }, draw: archer.draw || 0, proud: archer.proud || 0, loot: loot.map(function (l) { return Math.round(l.y); }) };
   };
 
   canvas.addEventListener("pointermove", function (e) {
